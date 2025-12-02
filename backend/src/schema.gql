@@ -1,0 +1,49 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AccessTokenType {
+  accessToken: String!
+}
+
+input CreatePortfolioInput {
+  amount: Float!
+  symbol: String!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type LoginRequestType {
+  message: String
+  success: Boolean!
+}
+
+type Mutation {
+  createPortfolio(input: CreatePortfolioInput!): PortfolioType!
+  loginRequest(email: String!): LoginRequestType!
+  sellPortfolio(input: SellPortfolioInput!): PortfolioType!
+  verifyOtp(email: String!, otp: String!): AccessTokenType!
+}
+
+type PortfolioType {
+  amount: Float!
+  baseCurrency: String!
+  createdAt: DateTime!
+  currentValueTRY: Float
+  id: String!
+  purchaseRateTRY: Float
+  symbol: String!
+}
+
+type Query {
+  getExchangeRate(symbolPair: String!): Float!
+  getPortfolios: [PortfolioType!]!
+}
+
+input SellPortfolioInput {
+  amount: Float!
+  id: ID!
+}
