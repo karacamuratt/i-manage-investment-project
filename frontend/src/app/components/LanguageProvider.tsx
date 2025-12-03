@@ -2,6 +2,11 @@
 
 import React, { useState, useCallback, useContext } from 'react';
 import { translations, LangType, I18nContextType, LanguageContext } from '@/src/app/config/i18n';
+import { assets } from '../config/i18n';
+
+export const getSymbolLabelKey = (symbol: string): keyof typeof assets.tr => {
+    return `${symbol.toUpperCase()}_LABEL` as keyof typeof assets.tr;
+};
 
 export const useLanguage = () => {
     const context = useContext(LanguageContext);

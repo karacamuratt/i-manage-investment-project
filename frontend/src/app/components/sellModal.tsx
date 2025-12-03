@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent } from "react";
-import { useLanguage } from './LanguageProvider'; 
+import { useLanguage, getSymbolLabelKey } from './LanguageProvider'; 
 
 interface SellModalProps {
     isOpen: boolean;
@@ -52,12 +52,12 @@ export default function SellModal({
                 <h3 className="text-2xl font-bold mb-4 text-red-600">{t('SELL_CONFIRMATION')}</h3>
 
                 <p className="mb-4 text-gray-700">
-                    <strong>{item.symbol}</strong> {t('SELL_DESCRIPTION_P1')}
+                    <strong>{t(getSymbolLabelKey(item.symbol))}</strong> {t('SELL_DESCRIPTION_P1')}
                     <br />
                     {t('SELL_MAXIMUM_LABEL')}:{" "}
                     <strong>
                         {maxAmount}{" "}
-                        {item.symbol}
+                        {t(getSymbolLabelKey(item.symbol))}
                     </strong>
                 </p>
 
@@ -68,7 +68,7 @@ export default function SellModal({
                                 htmlFor="sell-amount"
                                 className="block text-sm font-medium text-gray-700"
                             >
-                                {t('SELL_AMOUNT_LABEL', { symbol: item.symbol })}
+                                {t('SELL_AMOUNT_LABEL', { symbol: t(getSymbolLabelKey(item.symbol)) })}
                             </label>
 
                             <input

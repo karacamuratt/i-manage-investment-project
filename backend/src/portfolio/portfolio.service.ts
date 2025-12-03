@@ -6,6 +6,7 @@ import { CreatePortfolioInput, PortfolioType } from './dto/portfolio.dto';
 import { RateService } from '../rate/rate.service';
 import { User } from '../user/schemas/user.schema';
 import { SellPortfolioInput } from './dto/sell-portfolio.dto';
+import { getCalculatedGoldPrices } from 'src/gold/gold.service';
 
 type PortfolioBase = Omit<PortfolioType, 'currentValueTRY'>;
 
@@ -19,8 +20,33 @@ export class PortfolioService {
     ) {}
 
     async create(input: CreatePortfolioInput, user: User): Promise<PortfolioType> {
+        const goldPrices = await getCalculatedGoldPrices();
         const rateSymbol = `${input.symbol}/${user.baseCurrency}`;
-        const currentRate = await this.rateService.getRate(rateSymbol);
+        let currentRate;
+
+        switch (input.symbol) {
+            case 'XAU':
+                currentRate = goldPrices.onsAltinPrice;
+                break;
+            case 'GRAM_ALTIN':
+                currentRate = goldPrices.gramAltinPrice;
+                break;
+            case 'CEYREK_ALTIN':
+                currentRate = goldPrices.ceyrekAltinPrice;
+                break;
+            case 'TAM_ALTIN':
+                currentRate = goldPrices.tamAltinPrice;
+                break;
+            case 'ATA_ALTIN':
+                currentRate = goldPrices.ataAltinPrice;
+                break;
+            case 'USD':
+            case 'EUR':
+                currentRate = await this.rateService.getRate(rateSymbol);
+                break;
+            default:
+                throw new Error(`Desteklenmeyen veya fiyatı belirlenemeyen varlık: ${rateSymbol}`);
+        }
 
         const newPortfolioItem = new this.portfolioModel({
             ...input,
@@ -45,23 +71,50 @@ export class PortfolioService {
             currentValueTRY: 0
         }; 
         
-        if (calculatedItem.symbol === calculatedItem.baseCurrency) {
-            calculatedItem.currentValueTRY = calculatedItem.amount;
+        const { symbol, amount, baseCurrency } = calculatedItem;
+
+        if (symbol === baseCurrency) {
+            calculatedItem.currentValueTRY = amount;
             return calculatedItem;
         }
         
-        const rateSymbol = `${calculatedItem.symbol}/${calculatedItem.baseCurrency}`;
-        
+        const goldPrices = await getCalculatedGoldPrices();
+        let currentRate: number | undefined;
+
+        switch (symbol) {
+            case 'XAU':
+                currentRate = goldPrices.onsAltinPrice;
+                break;
+            case 'GRAM_ALTIN':
+                currentRate = goldPrices.gramAltinPrice;
+                break;
+            case 'CEYREK_ALTIN':
+                currentRate = goldPrices.ceyrekAltinPrice;
+                break;
+            case 'TAM_ALTIN':
+                currentRate = goldPrices.tamAltinPrice;
+                break;
+            case 'ATA_ALTIN':
+                currentRate = goldPrices.ataAltinPrice;
+                break;
+        }
+
         try {
-            const rate = await this.rateService.getRate(rateSymbol);
-            
-            if (rate > 0) {
-                calculatedItem.currentValueTRY = calculatedItem.amount * rate; 
+            if (currentRate !== undefined) {
+                calculatedItem.currentValueTRY = amount * currentRate;
+
             } else {
-                calculatedItem.currentValueTRY = 0;
+                const rateSymbol = `${symbol}/${baseCurrency}`;
+                const rate = await this.rateService.getRate(rateSymbol); 
+                
+                if (rate > 0) {
+                    calculatedItem.currentValueTRY = amount * rate; 
+                } else {
+                    calculatedItem.currentValueTRY = 0;
+                }
             }
         } catch (e) {
-            this.logger.warn(`Rate calculation failed for ${rateSymbol}: ${e.message}`);
+            this.logger.warn(`Rate calculation failed for ${symbol}: ${e.message}`);
             calculatedItem.currentValueTRY = 0;
         }
         

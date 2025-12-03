@@ -6,8 +6,10 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { LogoutButton } from './components/LogoutButton';
 import { useState, FormEvent, useMemo, useRef, useEffect } from 'react';
 import SellModal from "./components/sellModal";
-import { useLanguage } from '../app/components/LanguageProvider';
+import { useLanguage, getSymbolLabelKey } from '../app/components/LanguageProvider';
 import { LanguageSelector } from './components/LanguageSelector';
+import { useRouter } from 'next/navigation';
+
 
 interface PortfolioItem {
     id: string;
@@ -19,7 +21,14 @@ interface PortfolioItem {
     purchaseRateTRY: number;
 }
 
-const SUPPORTED_SYMBOLS = ['USD', 'EUR'];
+const SUPPORTED_SYMBOLS = [
+    'USD', 
+    'EUR',
+    'GRAM_ALTIN', 
+    'CEYREK_ALTIN', 
+    'TAM_ALTIN', 
+    'ATA_ALTIN',
+];
 
 const groupPortfoliosBySymbol = (items: PortfolioItem[]) => {
     return items.reduce((acc, item) => {
@@ -31,11 +40,12 @@ const groupPortfoliosBySymbol = (items: PortfolioItem[]) => {
 };
 
 export default function DashboardPage() {
+    const router = useRouter();
     useAuthGuard();
 
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const sellInputRef = useRef<HTMLInputElement>(null);
-    const { t } = useLanguage();
+    const { t, lang } = useLanguage();
 
     useEffect(() => {
         if (isSellModalOpen) {
@@ -84,6 +94,7 @@ export default function DashboardPage() {
 
     if (error) {
         console.error('GraphQL Error:', error);
+        router.push('/login');
         return <div className="p-8 text-red-500">{t('ERROR_LOGIN')}</div>;
     }
 
@@ -219,7 +230,7 @@ export default function DashboardPage() {
                             >
                                 {SUPPORTED_SYMBOLS.map(s => (
                                     <option key={s} value={s}>
-                                        {s}
+                                        {t(getSymbolLabelKey(s))} 
                                     </option>
                                 ))}
                             </select>
@@ -285,7 +296,7 @@ export default function DashboardPage() {
                             className="bg-white shadow-xl rounded-xl p-4 border border-gray-100"
                         >
                             <h3 className="text-xl font-bold mb-3 text-indigo-700 border-b pb-2">
-                                {t('ASSETS')} {symbol} ({ items.length == 1 ? t('ITEM_COUNT', { count: items.length }) : t('ITEMS_COUNT', { count: items.length }) })
+                                {t('ASSETS')} {t(getSymbolLabelKey(symbol))} ({ items.length == 1 ? t('ITEM_COUNT', { count: items.length }) : t('ITEMS_COUNT', { count: items.length }) })
                             </h3>
 
                             <div className="space-y-3">
@@ -296,9 +307,9 @@ export default function DashboardPage() {
 
                                     const formattedDate = new Date(
                                         item.createdAt
-                                    ).toLocaleString('tr-TR', {
+                                    ).toLocaleString(lang === 'en' ? 'en-US' : 'tr-TR', {
                                         year: 'numeric',
-                                        month: 'short',
+                                        month: 'long',
                                         day: 'numeric',
                                         hour: '2-digit',
                                         minute: '2-digit',
@@ -330,16 +341,16 @@ export default function DashboardPage() {
                                                         {item.amount.toLocaleString(undefined, {
                                                             maximumFractionDigits: 4,
                                                         })}{' '}
-                                                        {item.symbol}
+                                                        {t(getSymbolLabelKey(symbol))}
                                                     </p>
 
                                                     <p className="text-sm text-gray-500">
-                                                        {t('BUY_RATE', { symbol: item.symbol })}{' '}
+                                                        {t('BUY_RATE', { symbol: t(getSymbolLabelKey(symbol)) })}{' '}
                                                         {item.purchaseRateTRY.toFixed(2)}
                                                     </p>
 
                                                     <p className="text-xs text-gray-500 mt-0.5">
-                                                        {t('PURCHASE_DATE')}: {formattedDate}
+                                                        {t('PURCHASE_DATE')} {formattedDate}
                                                     </p>
                                                 </div>
                                             </div>
