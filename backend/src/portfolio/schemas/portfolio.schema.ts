@@ -3,10 +3,14 @@ import * as mongoose from 'mongoose';
 import { User } from '../../user/schemas/user.schema';
 
 export enum InvestmentCurrency {
-  USD = 'USD',
-  EUR = 'EUR',
-  XAU = 'XAU',
-  TRY = 'TRY',
+    USD = 'USD',
+    EUR = 'EUR',
+    XAU = 'XAU',
+    TRY = 'TRY',
+    GRAM_ALTIN = 'GRAM_ALTIN',
+    CEYREK_ALTIN = 'CEYREK_ALTIN',
+    TAM_ALTIN = 'TAM_ALTIN',
+    ATA_ALTIN = 'ATA_ALTIN',
 }
 
 export type PortfolioDocument = Portfolio & mongoose.Document;

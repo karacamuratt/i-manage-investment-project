@@ -1,5 +1,26 @@
 import React from "react";
 
+export const assets = {
+    tr: {
+        USD_LABEL: "Dolar (USD)",
+        EUR_LABEL: "Euro (EUR)",
+        XAU_LABEL: "Ons Altın",
+        GRAM_ALTIN_LABEL: "Gram Altın",
+        CEYREK_ALTIN_LABEL: "Çeyrek Altın",
+        TAM_ALTIN_LABEL: "Tam Altın",
+        ATA_ALTIN_LABEL: "Ata Altın",
+    },
+    en: {
+        USD_LABEL: "USD",
+        EUR_LABEL: "EUR",
+        XAU_LABEL: "Troy Ounce Gold",
+        GRAM_ALTIN_LABEL: "Gram Gold",
+        CEYREK_ALTIN_LABEL: "Quarter Gold",
+        TAM_ALTIN_LABEL: "Full Gold",
+        ATA_ALTIN_LABEL: "Ata Gold",
+    }
+};
+
 export const translations = {
     tr: {
         PORTFOLIO_SUMMARY: "💰 Portföy Özeti",
@@ -50,7 +71,8 @@ export const translations = {
         ERROR_SERVER: "İstek gönderilirken bir hata oluştu. Sunucuya ulaşılamıyor.",
         ERROR_TOKEN: "Token alınamadı. Doğrulama başarısız.",
         ERROR_OTP_INVALID: "OTP geçersiz veya süresi dolmuş.",
-        ERROR_VERIFICATION: "Doğrulama sırasında bir hata oluştu."
+        ERROR_VERIFICATION: "Doğrulama sırasında bir hata oluştu.",
+        ...assets.tr
     },
     en: {
         PORTFOLIO_SUMMARY: "💰 Portfolio Summary",
@@ -102,6 +124,7 @@ export const translations = {
         ERROR_OTP_INVALID: "OTP is invalid or expired.",
         ERROR_VERIFICATION: "An error occurred during verification.",
         SELL_DESCRIPTION_P1: "amount do you wish to sell? The amount sold will be deducted from your portfolio and this record will be updated.",
+        ...assets.en
     },
 };
 

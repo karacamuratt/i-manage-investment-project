@@ -128,7 +128,7 @@ export default function LoginPage() {
                         onChange={(e) => setOtp(e.target.value)}
                         required
                         maxLength={6}
-                        className="w-full p-3 border border-gray-300 rounded-lg text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-green-500"
+                        className="w-full p-3 border border-gray-300 rounded-lg text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-green-500 text-green-600 font-bold"
                     />
                     <button
                         type="submit"
