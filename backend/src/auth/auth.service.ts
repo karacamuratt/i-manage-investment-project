@@ -74,7 +74,13 @@ export class AuthService {
             baseCurrency: user.baseCurrency, 
             isPremium: user.isPremium 
         };
-        
-        return this.jwtService.sign(payload);
+
+        const jwtResult = this.jwtService.sign(payload);
+
+        if (jwtResult) {
+            await this.redisService.getAndDelOtp(email, true);
+        }
+
+        return jwtResult;
     }
 }
