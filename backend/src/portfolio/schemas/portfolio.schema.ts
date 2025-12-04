@@ -41,8 +41,11 @@ export class Portfolio {
     @Prop({ type: String, required: true })
     baseCurrency: string;
 
-    @Prop({ type: Number, required: true })
+    @Prop({ type: Number})
     purchaseRateTRY: number;
+
+    @Prop({ type: Boolean }) 
+    isManualRate: boolean;
 }
 
 export const PortfolioSchema = SchemaFactory.createForClass(Portfolio);

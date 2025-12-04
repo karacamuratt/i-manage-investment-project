@@ -26,16 +26,19 @@ export const GET_PORTFOLIOS = gql`
         baseCurrency
         createdAt  
         purchaseRateTRY
+        isManualRate
         }
     }
 `;
 
 export const CREATE_PORTFOLIO = gql`
-    mutation CreatePortfolio($symbol: String!, $amount: Float!) {
+    mutation CreatePortfolio($symbol: String!, $amount: Float!, $purchaseRateTRY: Float!, $isManualRate: Boolean!) {
         createPortfolio(
             input: { 
                 symbol: $symbol, 
-                amount: $amount 
+                amount: $amount,
+                purchaseRateTRY: $purchaseRateTRY,
+                isManualRate: $isManualRate 
             }
         ) {
             id
@@ -44,5 +47,11 @@ export const CREATE_PORTFOLIO = gql`
             currentValueTRY
             baseCurrency
         }
+    }
+`;
+
+export const GET_RATE = gql`
+    query GetRate($symbolPair: String!) {
+        getRate(symbolPair: $symbolPair)
     }
 `;

@@ -6,7 +6,7 @@ import { CreatePortfolioInput, PortfolioType } from './dto/portfolio.dto';
 import { RateService } from '../rate/rate.service';
 import { User } from '../user/schemas/user.schema';
 import { SellPortfolioInput } from './dto/sell-portfolio.dto';
-import { getCalculatedGoldPrices } from 'src/gold/gold.service';
+import { GoldService } from './../gold/gold.service';
 
 type PortfolioBase = Omit<PortfolioType, 'currentValueTRY'>;
 
@@ -17,35 +17,37 @@ export class PortfolioService {
     constructor(
         @InjectModel(Portfolio.name) private portfolioModel: Model<PortfolioDocument>,
         private readonly rateService: RateService,
+        private readonly goldService: GoldService,
     ) {}
 
     async create(input: CreatePortfolioInput, user: User): Promise<PortfolioType> {
-        const goldPrices = await getCalculatedGoldPrices();
+        const goldPrices = await this.goldService.getCalculatedGoldPrices();
         const rateSymbol = `${input.symbol}/${user.baseCurrency}`;
         let currentRate;
 
-        switch (input.symbol) {
-            case 'XAU':
-                currentRate = goldPrices.onsAltinPrice;
-                break;
-            case 'GRAM_ALTIN':
-                currentRate = goldPrices.gramAltinPrice;
-                break;
-            case 'CEYREK_ALTIN':
-                currentRate = goldPrices.ceyrekAltinPrice;
-                break;
-            case 'TAM_ALTIN':
-                currentRate = goldPrices.tamAltinPrice;
-                break;
-            case 'ATA_ALTIN':
-                currentRate = goldPrices.ataAltinPrice;
-                break;
-            case 'USD':
-            case 'EUR':
-                currentRate = await this.rateService.getRate(rateSymbol);
-                break;
-            default:
-                throw new Error(`Desteklenmeyen veya fiyatı belirlenemeyen varlık: ${rateSymbol}`);
+        if (input.purchaseRateTRY != 1) {
+            currentRate = input.purchaseRateTRY;
+        } else {
+            switch (input.symbol) {
+                case 'GRAM_ALTIN':
+                    currentRate = input.purchaseRateTRY != 1 ? input.purchaseRateTRY : goldPrices.GRAM_ALTIN;
+                    break;
+                case 'CEYREK_ALTIN':
+                    currentRate = input.purchaseRateTRY != 1 ? input.purchaseRateTRY : goldPrices.CEYREK_ALTIN;
+                    break;
+                case 'TAM_ALTIN':
+                    currentRate = input.purchaseRateTRY != 1 ? input.purchaseRateTRY : goldPrices.TAM_ALTIN;
+                    break;
+                case 'ATA_ALTIN':
+                    currentRate = input.purchaseRateTRY != 1 ? input.purchaseRateTRY : goldPrices.ATA_ALTIN;
+                    break;
+                case 'USD':
+                case 'EUR':
+                    currentRate = await this.rateService.getRate(rateSymbol);
+                    break;
+                default:
+                    throw new Error(`Unsupported or unpriced asset: ${rateSymbol}`);
+            }
         }
 
         const newPortfolioItem = new this.portfolioModel({
@@ -53,6 +55,7 @@ export class PortfolioService {
             user: user._id,
             purchaseRateTRY: currentRate,
             baseCurrency: user.baseCurrency,
+            isManualRate: input.isManualRate
         });
 
         this.logger.log('newPortfolioItem: ' + newPortfolioItem);
@@ -78,36 +81,32 @@ export class PortfolioService {
             return calculatedItem;
         }
         
-        const goldPrices = await getCalculatedGoldPrices();
+        const goldPrices = await this.goldService.getCalculatedGoldPrices();
         let currentRate: number | undefined;
 
         switch (symbol) {
-            case 'XAU':
-                currentRate = goldPrices.onsAltinPrice;
-                break;
             case 'GRAM_ALTIN':
-                currentRate = goldPrices.gramAltinPrice;
+                currentRate = calculatedItem.isManualRate ? item.purchaseRateTRY :goldPrices.GRAM_ALTIN;
                 break;
             case 'CEYREK_ALTIN':
-                currentRate = goldPrices.ceyrekAltinPrice;
+                currentRate = calculatedItem.isManualRate ? item.purchaseRateTRY : goldPrices.CEYREK_ALTIN;
                 break;
             case 'TAM_ALTIN':
-                currentRate = goldPrices.tamAltinPrice;
+                currentRate = calculatedItem.isManualRate ? item.purchaseRateTRY : goldPrices.TAM_ALTIN;
                 break;
             case 'ATA_ALTIN':
-                currentRate = goldPrices.ataAltinPrice;
+                currentRate = calculatedItem.isManualRate ? item.purchaseRateTRY : goldPrices.ATA_ALTIN;
                 break;
         }
 
         try {
             if (currentRate !== undefined) {
                 calculatedItem.currentValueTRY = amount * currentRate;
-
             } else {
                 const rateSymbol = `${symbol}/${baseCurrency}`;
-                const rate = await this.rateService.getRate(rateSymbol); 
+                const rate = calculatedItem.isManualRate ? item.purchaseRateTRY : await this.rateService.getRate(rateSymbol); 
                 
-                if (rate > 0) {
+                if (rate && rate > 0) {
                     calculatedItem.currentValueTRY = amount * rate; 
                 } else {
                     calculatedItem.currentValueTRY = 0;
@@ -153,7 +152,8 @@ export class PortfolioService {
                     baseCurrency: finalItem.baseCurrency,
                     currentValueTRY: finalItem.currentValueTRY,
                     createdAt: finalItem.createdAt, 
-                    purchaseRateTRY: finalItem.purchaseRateTRY
+                    purchaseRateTRY: finalItem.purchaseRateTRY,
+                    isManualRate: baseItem.isManualRate
                 } as PortfolioType;
             })
         );
