@@ -7,7 +7,7 @@ export class RateResolver {
     constructor(private readonly rateService: RateService) {}
 
     @Query(() => Float)
-    async getExchangeRate(
+    async getRate(
         @Args('symbolPair') symbolPair: string,
     ): Promise<number> {
         return this.rateService.getRate(symbolPair);

@@ -23,10 +23,15 @@ export const assets = {
 
 export const translations = {
     tr: {
+        USER_RATE: "(Sizin kaydettiğiniz kur)",
+        MANUAL_RATE_LABEL: "Kendi alış kurunu gir (Türk Lirası)",
+        MANUAL_RATE_PLACEHOLDER: "Örn: 30.50",
+        ERROR_MANUAL_RATE_INVALID: "Lütfen geçerli (0'dan büyük) bir alış kuru girin.",
+        CALCULATING: 'Hesaplanıyor...',
         PORTFOLIO_SUMMARY: "💰 Portföy Özeti",
         LOGIN_TITLE: "Giriş Yap | I-Manage Investment",
         LOGOUT: "Çıkış Yap",
-        TOTAL_VALUE: "Toplam Portföy Değeri:",
+        TOTAL_VALUE: "Toplam Portföy [ Anlık Ortalama Değer ≈ ]:",
         ADD_NEW_ASSET: "Yeni Varlık Ekle",
         SYMBOL: "Sembol",
         AMOUNT: "Miktar",
@@ -75,10 +80,15 @@ export const translations = {
         ...assets.tr
     },
     en: {
+        USER_RATE: "(The exchange rate you saved)",
+        MANUAL_RATE_LABEL: "Enter your own purchase rate (Turkish Lira)",
+        MANUAL_RATE_PLACEHOLDER: "Ex: 30.50",
+        ERROR_MANUAL_RATE_INVALID: "Please enter a valid purchase rate (greater than 0).",
+        CALCULATING: 'Calculating...',
         PORTFOLIO_SUMMARY: "💰 Portfolio Summary",
         LOGIN_TITLE: "Login | I-Manage Investment",
         LOGOUT: "Logout",
-        TOTAL_VALUE: "Total Portfolio Value:",
+        TOTAL_VALUE: "Total Portfolio [ Momentary Average Value ≈ ] :",
         ADD_NEW_ASSET: "Add New Asset",
         SYMBOL: "Symbol",
         AMOUNT: "Amount",

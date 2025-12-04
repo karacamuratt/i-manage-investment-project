@@ -20,6 +20,9 @@ export class PortfolioType {
     @Field(() => Float, { nullable: true })
     purchaseRateTRY: number;
 
+    @Field() 
+    isManualRate: Boolean;
+
     @Field()
     createdAt: Date;
 }
@@ -31,4 +34,10 @@ export class CreatePortfolioInput {
     
     @Field(() => Float)
     amount: number;
+
+    @Field(() => Float, { nullable: true })
+    purchaseRateTRY: number;
+
+    @Field(() => Boolean, { defaultValue: false} ) 
+    isManualRate: boolean;
 }

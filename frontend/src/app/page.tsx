@@ -1,7 +1,7 @@
 'use client';
 
-import { useQuery, useMutation } from '@apollo/client/react';
-import { GET_PORTFOLIOS, CREATE_PORTFOLIO, SELL_PORTFOLIO } from '@/graphql/queries';
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client/react';
+import { GET_PORTFOLIOS, CREATE_PORTFOLIO, SELL_PORTFOLIO, GET_RATE } from '@/graphql/queries';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { LogoutButton } from './components/LogoutButton';
 import { useState, FormEvent, useMemo, useRef, useEffect } from 'react';
@@ -17,8 +17,9 @@ interface PortfolioItem {
     amount: number;
     currentValueTRY: number;
     baseCurrency: string;
-    createdAt: string;
     purchaseRateTRY: number;
+    isManualRate: boolean;
+    createdAt: string;
 }
 
 const SUPPORTED_SYMBOLS = [
@@ -38,6 +39,8 @@ const groupPortfoliosBySymbol = (items: PortfolioItem[]) => {
         return acc;
     }, {} as Record<string, PortfolioItem[]>);
 };
+
+const SUPPORTED_BASE_CURRENCIES = ['TRY', 'USD', 'EUR'];
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -70,10 +73,25 @@ export default function DashboardPage() {
     const [newAmount, setNewAmount] = useState<string>('');
     const [formError, setFormError] = useState('');
 
+    const [isManualRateEnabled, setIsManualRateEnabled] = useState(false);
+    const [manualRate, setManualRate] = useState<string>('');
+
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
     const [itemToSell, setItemToSell] = useState<PortfolioItem | null>(null);
     const [sellAmount, setSellAmount] = useState<string>('');
     const [sellError, setSellError] = useState('');
+
+    const [selectedBaseCurrency, setSelectedBaseCurrency] = useState(SUPPORTED_BASE_CURRENCIES[0]); // Default: TRY
+    const [fetchConversionRate, { data: conversionData, loading: rateLoading, error: rateError }] = useLazyQuery<{ getRate: number }>(GET_RATE);
+
+    const targetSymbol = selectedBaseCurrency;
+    const rateSymbolPair = `TRY/${targetSymbol}`;
+
+    useEffect(() => {
+        if (targetSymbol && targetSymbol !== 'TRY') {
+            fetchConversionRate({ variables: { symbolPair: rateSymbolPair } });
+        }
+    }, [targetSymbol, rateSymbolPair, fetchConversionRate]);
 
     const { loading, error, data } = useQuery<{ getPortfolios: PortfolioItem[] }>(GET_PORTFOLIOS);
 
@@ -100,11 +118,32 @@ export default function DashboardPage() {
 
     const totalValue = portfolios.reduce((sum, item) => sum + item.currentValueTRY, 0);
 
+    let conversionRate = 1.0;
+    
+    if (selectedBaseCurrency === 'TRY') {
+        conversionRate = 1.0;
+    } else {
+        conversionRate = conversionData?.getRate || 0; 
+    }
+    
+    const convertedTotalValue = totalValue * conversionRate;
+
     const handleCheckboxChange = (itemId: string) => {
         setSelectedItemIds(prev =>
             prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
         );
     };
+
+    const handleNumericInputChange = (currentValue: string, setter: React.Dispatch<React.SetStateAction<string>>) => {
+        const filteredValue = currentValue
+            .replace(/,/g, '.')
+            .replace(/[^\d.]/g, '');
+
+        const parts = filteredValue.split('.');
+        const finalValue = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : filteredValue;
+
+        setter(finalValue);
+};
 
     const handleSellButtonClick = (item: PortfolioItem) => {
         setItemToSell(item);
@@ -162,6 +201,8 @@ export default function DashboardPage() {
 
         const parsedAmount = parseFloat(newAmount.toString());
 
+        const parsedManualRate = isManualRateEnabled ? parseFloat(manualRate) : NaN;
+
         if (!newSymbol) {
             setFormError(t('ERROR_SYMBOL'));
             return;
@@ -172,17 +213,30 @@ export default function DashboardPage() {
             return;
         }
 
+        if (isManualRateEnabled && (isNaN(parsedManualRate) || parsedManualRate <= 0)) {
+            setFormError(t('ERROR_MANUAL_RATE_INVALID'));
+            return;
+        }
+
         try {
+            const rateToUse = isManualRateEnabled ? parsedManualRate : 1;
+
             await createPortfolio({
                 variables: {
                     symbol: newSymbol.toUpperCase().trim(),
                     amount: parsedAmount,
+                    purchaseRateTRY: rateToUse,
+                    isManualRate: isManualRateEnabled
                 },
             });
 
+            setIsManualRateEnabled(false);
+            setManualRate('');
             setNewSymbol(SUPPORTED_SYMBOLS[0]);
             setNewAmount('');
         } catch (err: any) {
+            setIsManualRateEnabled(false);
+            setManualRate('');
             console.error('Error while adding the asset:', err);
             setFormError(`Hata: ${err.message.replace('GraphQL error:', '').trim()}`);
         }
@@ -200,13 +254,38 @@ export default function DashboardPage() {
 
             {/* TOTAL VALUE */}
             <div className="bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg rounded-xl p-6 mb-8">
-                <p className="font-bold text-sm opacity-80">{t('TOTAL_VALUE')}</p>
+                <div className="flex items-center space-x-2 mb-2">
+                    <p className="font-bold text-sm opacity-80">{t('TOTAL_VALUE')}</p>
+                    <select
+                        value={selectedBaseCurrency}
+                        onChange={(e) => setSelectedBaseCurrency(e.target.value)}
+                        className="p-1 border rounded-md bg-gray-800 text-white border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    >
+                        {SUPPORTED_BASE_CURRENCIES.map(currency => (
+                            <option key={currency} value={currency}>{currency}</option>
+                        ))}
+                    </select>
+                </div>
                 <p className="text-5xl font-extrabold mt-1">
-                    {totalValue.toLocaleString('tr-TR', {
-                        maximumFractionDigits: 2,
-                        style: 'currency',
-                        currency: 'TRY',
-                    })}
+                {rateLoading
+                    ? t('CALCULATING')
+                    : (() => {
+                        const formatted = convertedTotalValue.toLocaleString(
+                            lang === 'en' ? 'en-US' : 'tr-TR',
+                            {
+                                maximumFractionDigits: 2,
+                                style: 'currency',
+                                currency: selectedBaseCurrency,
+                            }
+                        );
+
+                        if (selectedBaseCurrency === 'TRY') {
+                            return formatted.replace('TRY', '₺');
+                        }
+
+                        return formatted;
+                    })()
+                }
                 </p>
             </div>
 
@@ -258,6 +337,38 @@ export default function DashboardPage() {
                                 step="any"
                                 disabled={creating}
                             />
+                        </div>
+
+                        <div className="flex items-center space-x-4 pt-2">
+                            <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                    {/* Checkbox */}
+                                    <input
+                                        type="checkbox"
+                                        id="manual-rate-check"
+                                        checked={isManualRateEnabled}
+                                        onChange={(e) => setIsManualRateEnabled(e.target.checked)}
+                                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                    />
+                                    <label htmlFor="manual-rate-check" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                        {t('MANUAL_RATE_LABEL')}
+                                    </label>
+                                </div>
+                                
+                                <input
+                                    type="text"
+                                    value={manualRate}
+                                    onChange={(e) => handleNumericInputChange(e.target.value, setManualRate)}
+                                    className={`mt-1 block w-full rounded-md p-3 shadow-sm border ${
+                                        isManualRateEnabled ? 'border-gray-300' : 'border-gray-200 bg-gray-50'
+                                    } text-black`}
+                                    placeholder={t('MANUAL_RATE_PLACEHOLDER')}
+                                    disabled={!isManualRateEnabled || creating}
+                                    inputMode="decimal"
+                                />
+                            </div>
+                            <div className="flex-1">
+                            </div>
                         </div>
                     </div>
 
@@ -346,7 +457,7 @@ export default function DashboardPage() {
 
                                                     <p className="text-sm text-gray-500">
                                                         {t('BUY_RATE', { symbol: t(getSymbolLabelKey(symbol)) })}{' '}
-                                                        {item.purchaseRateTRY.toFixed(2)}
+                                                        {item.purchaseRateTRY} {item.isManualRate ? t('USER_RATE') : ''}
                                                     </p>
 
                                                     <p className="text-xs text-gray-500 mt-0.5">

@@ -8,6 +8,8 @@ type AccessTokenType {
 
 input CreatePortfolioInput {
   amount: Float!
+  isManualRate: Boolean! = false
+  purchaseRateTRY: Float
   symbol: String!
 }
 
@@ -34,13 +36,14 @@ type PortfolioType {
   createdAt: DateTime!
   currentValueTRY: Float
   id: String!
+  isManualRate: Boolean!
   purchaseRateTRY: Float
   symbol: String!
 }
 
 type Query {
-  getExchangeRate(symbolPair: String!): Float!
   getPortfolios: [PortfolioType!]!
+  getRate(symbolPair: String!): Float!
 }
 
 input SellPortfolioInput {

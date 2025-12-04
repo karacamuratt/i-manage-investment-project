@@ -5,6 +5,7 @@ import { PortfolioService } from './portfolio.service';
 import { PortfolioResolver } from './portfolio.resolver';
 import { RateModule } from '../rate/rate.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { GoldModule } from 'src/gold/gold.module';
 
 @Module({
     imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from 'src/auth/auth.module';
         }]),
         RateModule,
         AuthModule,
+        GoldModule
     ],
     providers: [PortfolioService, PortfolioResolver],
 })
