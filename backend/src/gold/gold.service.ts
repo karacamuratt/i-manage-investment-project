@@ -1,9 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { RateService } from "src/rate/rate.service";
 
-const TROY_OUNCE_TO_GRAM = 31.1034768; 
+const TROY_OUNCE_TO_GRAM = 31.1034768;
 const TWENTY_TWO_CARAT_FACTOR = 22 / 24;
-const DUMMY_ONS_USD_PRICE = 4209.00;
 
 interface GoldPrices {
     GRAM_ALTIN: number;
@@ -16,30 +15,49 @@ interface GoldPrices {
 @Injectable()
 export class GoldService {
     private readonly logger = new Logger(GoldService.name);
+
     constructor(private readonly rateService: RateService) {}
 
     public async getCalculatedGoldPrices(): Promise<GoldPrices> {
-        let usdTryRate = await this.rateService.getRate('USD/TRY');
+        try {
+            const onsAltinUSDPrice = await this.rateService.getRate('XAU/USD');
+            const usdTryRate = await this.rateService.getRate('USD/TRY');
 
-        const onsAltinUSDPrice = DUMMY_ONS_USD_PRICE;
-        const onsAltinTRYPrice = onsAltinUSDPrice * usdTryRate; 
-        
-        const gramAltin24AyarPrice = onsAltinTRYPrice / TROY_OUNCE_TO_GRAM;
-        const gramAltin22AyarPrice = gramAltin24AyarPrice * TWENTY_TWO_CARAT_FACTOR;
+            if (!onsAltinUSDPrice || !usdTryRate) {
+                this.logger.error("Could not fetch gold or USD/TRY rate");
+                return this.emptyResult();
+            }
 
-        const ceyrekAltinPrice = gramAltin22AyarPrice * 1.75;
-        const tamAltinPrice = gramAltin22AyarPrice * 7.00;
-        const ataAltinPrice = gramAltin22AyarPrice * 7.216;
+            const onsAltinTRYPrice = onsAltinUSDPrice * usdTryRate;
 
-        let goldPrices = {
-            GRAM_ALTIN: parseFloat(gramAltin24AyarPrice.toFixed(4)),
-            CEYREK_ALTIN: parseFloat(ceyrekAltinPrice.toFixed(4)),
-            TAM_ALTIN: parseFloat(tamAltinPrice.toFixed(4)),
-            ATA_ALTIN: parseFloat(ataAltinPrice.toFixed(4)),
+            const gramAltin24AyarPrice = onsAltinTRYPrice / TROY_OUNCE_TO_GRAM;
+            const gramAltin22AyarPrice = gramAltin24AyarPrice * TWENTY_TWO_CARAT_FACTOR;
+
+            const ceyrekAltinPrice = gramAltin22AyarPrice * 1.75;
+            const tamAltinPrice = gramAltin22AyarPrice * 7.0;
+            const ataAltinPrice = gramAltin22AyarPrice * 7.216;
+
+            const result: GoldPrices = {
+                GRAM_ALTIN: parseFloat(gramAltin24AyarPrice.toFixed(4)),
+                CEYREK_ALTIN: parseFloat(ceyrekAltinPrice.toFixed(4)),
+                TAM_ALTIN: parseFloat(tamAltinPrice.toFixed(4)),
+                ATA_ALTIN: parseFloat(ataAltinPrice.toFixed(4)),
+            };
+
+            this.logger.log(result);
+            return result;
+        } catch (error) {
+            this.logger.error("Error calculating gold prices", error);
+            return this.emptyResult();
+        }
+    }
+
+    private emptyResult(): GoldPrices {
+        return {
+            GRAM_ALTIN: 0,
+            CEYREK_ALTIN: 0,
+            TAM_ALTIN: 0,
+            ATA_ALTIN: 0,
         };
-
-        this.logger.log(goldPrices);
-
-        return goldPrices;
     }
 }
