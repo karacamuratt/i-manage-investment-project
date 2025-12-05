@@ -23,6 +23,7 @@ export const assets = {
 
 export const translations = {
     tr: {
+        TOTAL_SYMBOL_AMOUNT: "[TOPLAM]: ",
         USER_RATE: "(Sizin kaydettiğiniz kur)",
         MANUAL_RATE_LABEL: "Kendi alış kurunu gir (Türk Lirası)",
         MANUAL_RATE_PLACEHOLDER: "Örn: 30.50",
@@ -80,6 +81,7 @@ export const translations = {
         ...assets.tr
     },
     en: {
+        TOTAL_SYMBOL_AMOUNT: "[TOTAL] : ",
         USER_RATE: "(The exchange rate you saved)",
         MANUAL_RATE_LABEL: "Enter your own purchase rate (Turkish Lira)",
         MANUAL_RATE_PLACEHOLDER: "Ex: 30.50",

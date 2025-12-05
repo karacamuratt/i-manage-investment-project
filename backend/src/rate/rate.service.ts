@@ -6,99 +6,129 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Rate, RateDocument } from './schemas/rate.schema';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class RateService {
     private readonly logger = new Logger(RateService.name);
-    private readonly baseUrl = 'https://www.alphavantage.co/query';
+    private readonly baseUrl = 'https://metals-api.com/api/latest';
     private readonly apiKey: string;
-    private readonly currencyPairsToFetch = ['USD/TRY', 'EUR/TRY', 'GBP/TRY']; 
+
+    private readonly currencyPairsToFetch = [
+        'USD/TRY',
+        'EUR/TRY',
+        'XAU/USD',
+        'TRY/USD',
+        'TRY/EUR',
+    ];
 
     constructor(
         private readonly httpService: HttpService,
+        private readonly redisService: RedisService,
         private readonly configService: ConfigService,
         @InjectModel(Rate.name) private rateModel: Model<RateDocument>,
     ) {
-        this.apiKey = this.configService.get<string>('ALPHA_VANTAGE_API_KEY')!;
-
+        this.apiKey = this.configService.get<string>('METALS_API_KEY')!;
         if (!this.apiKey) {
-            this.logger.error('ALPHA_VANTAGE_API_KEY is not set.');
-            throw new InternalServerErrorException('API key is missing.');
+            throw new InternalServerErrorException('METALS_API_KEY is missing.');
         }
     }
-  
-    @Cron(CronExpression.EVERY_DAY_AT_10AM) 
+
+    @Cron(CronExpression.EVERY_DAY_AT_11AM)
     async handleCronUpdateRates() {
-        this.logger.log('Start: Updating exchange rates via cron...');
-        
+        this.logger.log('Updating exchange rates via Metals API...');
+
         for (const pair of this.currencyPairsToFetch) {
             await this.fetchAndSaveRate(pair);
         }
-        
-        this.logger.log('End: Exchange rates updated.');
+
+        this.logger.log('Exchange rates update completed.');
     }
 
     private async fetchAndSaveRate(symbolPair: string): Promise<void> {
-        if (!symbolPair || symbolPair.length < 5 || !symbolPair.includes('/')) {
-            this.logger.error(`Invalid currency pair format: ${symbolPair}`);
-            return; 
-        }
-
-        this.logger.log(`Fetching ${symbolPair} rate from Alpha Vantage...`);
         const [base, target] = symbolPair.split('/');
-        
-        const url = `${this.baseUrl}?function=CURRENCY_EXCHANGE_RATE&from_currency=${base}&to_currency=${target}&apikey=${this.apiKey}`;
-        
+
+        this.logger.log(`Fetching ${symbolPair} from Metals API...`);
+
+        const url = `${this.baseUrl}?access_key=${this.apiKey}&base=${base}&symbols=${target}`;
+
         try {
             const response = await lastValueFrom(this.httpService.get(url));
             const data = response.data;
-            
-            if (data['Error Message'] || data.Information) {
-                this.logger.error(`API Error for ${symbolPair}: ${data['Error Message'] || data.Information}`);
+
+            if (!data.success) {
+                this.logger.error(`MetalsAPI error for ${symbolPair}: ${data.error?.info}`);
                 return;
             }
 
-            const rateKey = 'Realtime Currency Exchange Rate';
-            const rateInfo = data[rateKey];
-            const rateValue = parseFloat(rateInfo['5. Exchange Rate']);
+            const rateValue = data.rates[target];
 
-            if (isNaN(rateValue) || rateValue <= 0) {
-                this.logger.error(`Invalid exchange rate received: ${rateValue}`);
-                return; 
+            let finalRate = rateValue;
+
+            if (!finalRate) {
+                const reverseUrl = `${this.baseUrl}?access_key=${this.apiKey}&base=${target}&symbols=${base}`;
+                const reverseRes = await lastValueFrom(this.httpService.get(reverseUrl));
+
+                if (!reverseRes.data.success) {
+                    this.logger.error(`Reverse fetch failed for ${symbolPair}`);
+                    return;
+                }
+
+                const reverseRate = reverseRes.data.rates[base];
+
+                if (reverseRate) {
+                    finalRate = 1 / reverseRate;
+                }
+            }
+
+            if (!finalRate || isNaN(finalRate)) {
+                this.logger.error(`Invalid rate for ${symbolPair}`);
+                return;
             }
 
             await this.rateModel.findOneAndUpdate(
-                { symbolPair }, 
-                { value: rateValue, updatedAt: new Date() },
+                { symbolPair },
+                { value: finalRate, updatedAt: new Date() },
                 { upsert: true, new: true }
             );
 
-            this.logger.log(`Success: ${symbolPair} = ${rateValue}`);
-            
-        } catch (error) {
-            this.logger.error(`API request failed: ${error.message}`);
+            this.logger.log(`Saved ${symbolPair}: ${finalRate}`);
+
+        } catch (err) {
+            this.logger.error(`Metals API request failed for ${symbolPair}: ${err.message}`);
         }
     }
 
     async getRate(symbolPair: string): Promise<number> {
-        
-        const cachedRate = await this.rateModel.findOne({ symbolPair }).exec();
+        const redisKey = `rate:${symbolPair}`;
+        const redisRate = await this.redisService.get(redisKey);
 
-        if (cachedRate) {
-            this.logger.verbose(`Fetched from cache: ${symbolPair} = ${cachedRate.value}`);
-            return cachedRate.value;
+        if (redisRate) {
+            this.logger.verbose(`Redis cache hit: ${symbolPair} = ${redisRate}`);
+            return parseFloat(redisRate);
         }
-        
-        this.logger.warn(`Not found in cache. Fetching ${symbolPair} from API...`);
+
+        const dbRate = await this.rateModel.findOne({ symbolPair }).exec();
+
+        if (dbRate) {
+            this.logger.verbose(`MongoDB cache hit: ${symbolPair} = ${dbRate.value}`);
+
+            await this.redisService.set(redisKey, dbRate.value.toString(), 300);
+
+            return dbRate.value;
+        }
+
+        this.logger.warn(`Cache miss and DB data miss → Fetching from MetalsAPI: ${symbolPair}`);
         await this.fetchAndSaveRate(symbolPair);
-        
-        const newlyFetchedRate = await this.rateModel.findOne({ symbolPair }).exec();
 
-        if (newlyFetchedRate) {
-            return newlyFetchedRate.value;
+        const newRate = await this.rateModel.findOne({ symbolPair }).exec();
+
+        if (newRate) {
+            await this.redisService.set(redisKey, newRate.value.toString(), 300);
+            return newRate.value;
         }
-        
-        this.logger.error(`Exchange rate not found and could not be fetched from API: ${symbolPair}`);
-        return 0; 
+
+        this.logger.error(`Failed to fetch rate for ${symbolPair}`);
+        return 0;
     }
 }

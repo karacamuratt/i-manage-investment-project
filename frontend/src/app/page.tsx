@@ -9,7 +9,7 @@ import SellModal from "./components/sellModal";
 import { useLanguage, getSymbolLabelKey } from '../app/components/LanguageProvider';
 import { LanguageSelector } from './components/LanguageSelector';
 import { useRouter } from 'next/navigation';
-
+import getSymbolFromCurrency from "currency-symbol-map";
 
 interface PortfolioItem {
     id: string;
@@ -30,6 +30,29 @@ const SUPPORTED_SYMBOLS = [
     'TAM_ALTIN', 
     'ATA_ALTIN',
 ];
+
+const getSymbolTotalAmount = (items: PortfolioItem[], symbol: string, lang: string): string => {
+    
+    const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+    
+    const maxDecimals = ['USD', 'EUR'].includes(symbol) ? 2 : 4;
+
+    const locale = lang === 'en' ? 'en-US' : 'tr-TR';
+    
+    const formattedAmount = totalAmount.toLocaleString(locale, {
+        maximumFractionDigits: maxDecimals,
+        minimumFractionDigits: 2,
+        style: 'decimal',
+    });
+
+    const currencySymbol = getSymbolFromCurrency(symbol) || symbol;
+
+    if (['USD', 'EUR'].includes(symbol)) {
+        return `${formattedAmount} ${currencySymbol}`;
+    }
+    
+    return `${formattedAmount}`;
+};
 
 const groupPortfoliosBySymbol = (items: PortfolioItem[]) => {
     return items.reduce((acc, item) => {
@@ -107,6 +130,15 @@ export default function DashboardPage() {
     const groupedPortfolios = useMemo(() => groupPortfoliosBySymbol(portfolios), [portfolios]);
 
     const isAnyItemSelected = selectedItemIds.length > 0;
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timerId = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+
+        return () => clearInterval(timerId);
+    }, []);
 
     if (loading) return <div className="p-8">{t('LOADING')}</div>;
 
@@ -242,12 +274,29 @@ export default function DashboardPage() {
         }
     };
 
+    const locale = lang === 'en' ? 'en-US' : 'tr-TR';
+
+    const timeOptions: Intl.DateTimeFormatOptions = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: false
+    };
+
+    const formattedTime = currentTime.toLocaleString(locale, timeOptions);
+
     return (
         <div className="container mx-auto p-8 font-sans">
 
             {/* HEADER */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">{t('PORTFOLIO_SUMMARY')}</h1>
+                <div className="text-white bg-gray-800 text-sm border border-gray-500 font-semibold mr-4 p-2 rounded-md">
+                    {formattedTime}
+                </div>
                 <LanguageSelector />
                 <LogoutButton />
             </div>
@@ -407,7 +456,7 @@ export default function DashboardPage() {
                             className="bg-white shadow-xl rounded-xl p-4 border border-gray-100"
                         >
                             <h3 className="text-xl font-bold mb-3 text-indigo-700 border-b pb-2">
-                                {t('ASSETS')} {t(getSymbolLabelKey(symbol))} ({ items.length == 1 ? t('ITEM_COUNT', { count: items.length }) : t('ITEMS_COUNT', { count: items.length }) })
+                                {t('ASSETS')} {t(getSymbolLabelKey(symbol))} {t('TOTAL_SYMBOL_AMOUNT')} {getSymbolTotalAmount(items, symbol, lang)}
                             </h3>
 
                             <div className="space-y-3">
@@ -457,7 +506,7 @@ export default function DashboardPage() {
 
                                                     <p className="text-sm text-gray-500">
                                                         {t('BUY_RATE', { symbol: t(getSymbolLabelKey(symbol)) })}{' '}
-                                                        {item.purchaseRateTRY} {item.isManualRate ? t('USER_RATE') : ''}
+                                                        {item.purchaseRateTRY.toFixed(5)} {item.isManualRate ? t('USER_RATE') : ''}
                                                     </p>
 
                                                     <p className="text-xs text-gray-500 mt-0.5">

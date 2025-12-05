@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@apollo/client": "^4.0.9",
+    "currency-symbol-map": "^5.1.0",
     "graphql": "^16.12.0",
     "next": "16.0.3",
     "react": "19.2.0",
