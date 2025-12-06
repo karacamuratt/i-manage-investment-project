@@ -55,3 +55,25 @@ export const GET_RATE = gql`
         getRate(symbolPair: $symbolPair)
     }
 `;
+
+export const GET_USER_PROFILE = gql`
+    query GetUserProfile {
+        getUserProfile {
+            id
+            email
+            firstName
+            lastName
+            createdAt
+        }
+    }
+`;
+
+export const UPDATE_USER_PROFILE = gql`
+    mutation UpdateUserProfile($firstName: String!, $lastName: String!) {
+        updateUserProfile(input: { firstName: $firstName, lastName: $lastName }) {
+            id
+            firstName
+            lastName
+        }
+    }
+`;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useLazyQuery } from '@apollo/client/react';
-import { GET_PORTFOLIOS, CREATE_PORTFOLIO, SELL_PORTFOLIO, GET_RATE } from '@/graphql/queries';
+import { GET_USER_PROFILE, UPDATE_USER_PROFILE, GET_PORTFOLIOS, CREATE_PORTFOLIO, SELL_PORTFOLIO, GET_RATE } from '@/graphql/queries';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { LogoutButton } from './components/LogoutButton';
 import { useState, FormEvent, useMemo, useRef, useEffect } from 'react';
@@ -10,6 +10,7 @@ import { useLanguage, getSymbolLabelKey } from '../app/components/LanguageProvid
 import { LanguageSelector } from './components/LanguageSelector';
 import { useRouter } from 'next/navigation';
 import getSymbolFromCurrency from "currency-symbol-map";
+import ProfileModal from './components/ProfileModal';
 
 interface PortfolioItem {
     id: string;
@@ -19,6 +20,14 @@ interface PortfolioItem {
     baseCurrency: string;
     purchaseRateTRY: number;
     isManualRate: boolean;
+    createdAt: string;
+}
+
+interface UserProfile {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
     createdAt: string;
 }
 
@@ -91,6 +100,26 @@ export default function DashboardPage() {
         }
     }, [t, isSellModalOpen]);
 
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [profileData, setProfileData] = useState<UserProfile | null>(null);
+    const [formErrorProfile, setFormErrorProfile] = useState('');
+
+    const { data: userData, loading: userLoading, error: userError, refetch: refetchProfile } = 
+        useQuery<{ getUserProfile: UserProfile }>(GET_USER_PROFILE);
+    
+    const [updateProfile, { loading: updatingProfile }] = useMutation(UPDATE_USER_PROFILE, {
+        refetchQueries: [{ query: GET_USER_PROFILE }, 'GetUserProfile'],
+    });
+
+    const handleProfileButtonClick = () => {
+        if (userData?.getUserProfile) {
+            setProfileData(userData.getUserProfile);
+        } else {
+            refetchProfile();
+        }
+
+        setIsProfileModalOpen(true);
+    };
 
     const [newSymbol, setNewSymbol] = useState(SUPPORTED_SYMBOLS[0]);
     const [newAmount, setNewAmount] = useState<string>('');
@@ -294,11 +323,33 @@ export default function DashboardPage() {
             {/* HEADER */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">{t('PORTFOLIO_SUMMARY')}</h1>
-                <div className="text-white bg-gray-800 text-sm border border-gray-500 font-semibold mr-4 p-2 rounded-md">
-                    {formattedTime}
+                
+                <div className="flex items-center space-x-6"> 
+                    <div className="flex items-center space-x-3">
+                        <div className="text-white bg-gray-800 space-x-6 text-sm border border-gray-500 font-semibold p-2 rounded-md">
+                            {formattedTime}
+                        </div>
+                        <LanguageSelector />
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={handleProfileButtonClick}
+                            style={{ 
+                                padding: '10px 25px', 
+                                backgroundColor: 'blue', 
+                                color: 'white', 
+                                border: 'none', 
+                                cursor: 'pointer' 
+                            }}
+                            disabled={userLoading}
+                        >
+                            {userLoading ? `${t('LOADING')}...` : t('PROFILE_TITLE')}
+                        </button>
+                        
+                        <LogoutButton />
+                    </div>
                 </div>
-                <LanguageSelector />
-                <LogoutButton />
             </div>
 
             {/* TOTAL VALUE */}
@@ -570,6 +621,22 @@ export default function DashboardPage() {
                 onClose={() => setIsSellModalOpen(false)}
                 sellInputRef={sellInputRef}
             />
+
+             {isProfileModalOpen && profileData && (
+                <ProfileModal
+                    isOpen={isProfileModalOpen}
+                    profile={profileData}
+                    onUpdate={updateProfile}
+                    onClose={() => {
+                        setIsProfileModalOpen(false);
+                        setFormErrorProfile(null);
+                    }}
+                    t={t}
+                    updating={updatingProfile}
+                    error={formErrorProfile}
+                    setError={setFormErrorProfile}
+                />
+            )}
         </div>
     );
 }
