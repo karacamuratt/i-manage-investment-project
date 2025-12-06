@@ -1,11 +1,18 @@
-import { Resolver, Mutation, Args } from '@nestjs/graphql';
+import { Resolver, Mutation, Args, Query } from '@nestjs/graphql';
 import { AuthService } from './auth.service';
 import { LoginRequestType, AccessTokenType } from './dto/auth.dto';
-import { UsePipes, ValidationPipe } from '@nestjs/common';
+import { UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { UserType } from 'src/user/types/user.type';
+import { CurrentUser, GqlAuthGuard } from './jwt-auth/jwt-auth.guard';
+import { UpdateUserProfileInput } from 'src/user/dto/update-user-profile.input';
+import { UserService } from 'src/user/user.service';
 
 @Resolver()
 export class AuthResolver {
-    constructor(private readonly authService: AuthService) {}
+    constructor(
+        private readonly authService: AuthService,
+        private readonly userService: UserService
+    ) {}
 
     @Mutation(() => LoginRequestType, { name: 'loginRequest' })
     @UsePipes(new ValidationPipe())
@@ -26,5 +33,48 @@ export class AuthResolver {
     ) {
         const accessTokenString = await this.authService.verifyOtp(email, otp);
         return { accessToken: accessTokenString };
+    }
+
+    @Query(() => UserType, { nullable: true })
+    @UsePipes(new ValidationPipe())
+    @UseGuards(GqlAuthGuard)
+    async getUserProfile (
+        @CurrentUser() user: any,
+    ): Promise<UserType | null> {
+        if (!user || !user.id) {
+            throw new Error('Unauthorized: User ID is missing.'); 
+        }
+    
+        const userDocument = await this.userService.findOneById(user.id);
+
+        if (!userDocument) {
+            return null; 
+        }
+
+        const userObject = userDocument.toObject({ virtuals: true });
+
+        return userObject as unknown as UserType;
+    }
+
+    @Mutation(() => UserType, { nullable: true })
+    @UseGuards(GqlAuthGuard)
+    @UsePipes(new ValidationPipe())
+    async updateUserProfile(
+        @CurrentUser() user: any,
+        @Args('input') input: UpdateUserProfileInput,
+    ): Promise<UserType | null> {
+        if (!user || !user.id) {
+            throw new Error('Unauthorized: User ID is missing.'); 
+        }
+
+        const updatedUserDocument = await this.userService.updateProfile(user.id, input);
+        
+        if (!updatedUserDocument) {
+            return null;
+        }
+
+        const userObject = updatedUserDocument.toObject({ virtuals: true });
+
+        return userObject as unknown as UserType;
     }
 }

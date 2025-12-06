@@ -21,6 +21,35 @@ export const assets = {
     }
 };
 
+export const profile = {
+    tr: {
+        PROFILE_TITLE: "Profilim",
+        PROFILE_FIRST_NAME: "Ad",
+        PROFILE_LAST_NAME: "Soyad",
+        PROFILE_FIRST_NAME_PLACEHOLDER: "Adınızı giriniz",
+        PROFILE_LAST_NAME_PLACEHOLDER: "Soyadınızı giriniz",
+        PROFILE_CREATED_AT: "Hesap Oluşturulma Tarihi",
+        SAVE: "Kaydet",
+        SAVING: "Kaydediliyor",
+        ERROR_PROFILE_REQUIRED: "Ad ve Soyad alanları boş bırakılamaz.",
+        ERROR_UPDATE_FAILED: "Bilgiler güncellenirken hata oluştu",
+        LOCALE_CODE: "tr-TR",
+    },
+    en: {
+        PROFILE_TITLE: "My Profile",
+        PROFILE_FIRST_NAME: "First Name",
+        PROFILE_LAST_NAME: "Last Name",
+        PROFILE_FIRST_NAME_PLACEHOLDER: "Enter your first name",
+        PROFILE_LAST_NAME_PLACEHOLDER: "Enter your last name",
+        PROFILE_CREATED_AT: "Account Creation Date",
+        SAVE: "Save",
+        SAVING: "Saving",
+        ERROR_PROFILE_REQUIRED: "First Name and Last Name fields cannot be empty.",
+        ERROR_UPDATE_FAILED: "Failed to update information",
+        LOCALE_CODE: "en-US",
+    },
+};
+
 export const translations = {
     tr: {
         TOTAL_SYMBOL_AMOUNT: "[TOPLAM]: ",
@@ -78,7 +107,8 @@ export const translations = {
         ERROR_TOKEN: "Token alınamadı. Doğrulama başarısız.",
         ERROR_OTP_INVALID: "OTP geçersiz veya süresi dolmuş.",
         ERROR_VERIFICATION: "Doğrulama sırasında bir hata oluştu.",
-        ...assets.tr
+        ...assets.tr,
+        ...profile.tr
     },
     en: {
         TOTAL_SYMBOL_AMOUNT: "[TOTAL] : ",
@@ -136,7 +166,8 @@ export const translations = {
         ERROR_OTP_INVALID: "OTP is invalid or expired.",
         ERROR_VERIFICATION: "An error occurred during verification.",
         SELL_DESCRIPTION_P1: "amount do you wish to sell? The amount sold will be deducted from your portfolio and this record will be updated.",
-        ...assets.en
+        ...assets.en,
+        ...profile.en
     },
 };
 

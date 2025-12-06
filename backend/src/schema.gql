@@ -27,6 +27,7 @@ type Mutation {
   createPortfolio(input: CreatePortfolioInput!): PortfolioType!
   loginRequest(email: String!): LoginRequestType!
   sellPortfolio(input: SellPortfolioInput!): PortfolioType!
+  updateUserProfile(input: UpdateUserProfileInput!): UserType
   verifyOtp(email: String!, otp: String!): AccessTokenType!
 }
 
@@ -44,9 +45,23 @@ type PortfolioType {
 type Query {
   getPortfolios: [PortfolioType!]!
   getRate(symbolPair: String!): Float!
+  getUserProfile: UserType
 }
 
 input SellPortfolioInput {
   amount: Float!
   id: ID!
+}
+
+input UpdateUserProfileInput {
+  firstName: String!
+  lastName: String!
+}
+
+type UserType {
+  createdAt: DateTime!
+  email: String!
+  firstName: String
+  id: ID!
+  lastName: String
 }

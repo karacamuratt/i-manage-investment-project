@@ -11,6 +11,12 @@ export class User {
     @Prop({ required: true, unique: true, index: true })
     email: string;
 
+    @Prop({ required: false, default: '' }) 
+    firstName: string;
+
+    @Prop({ required: false, default: '' }) 
+    lastName: string;
+
     @Prop({ default: 'TRY' })
     baseCurrency: string;
 

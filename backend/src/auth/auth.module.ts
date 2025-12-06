@@ -8,6 +8,7 @@ import { RedisModule } from '../redis/redis.module';
 import { JwtStrategy } from './jwt-auth/jwt.strategy';
 import { PassportModule } from '@nestjs/passport';
 import { AuthResolver } from './auth.resolver';
+import { UserService } from 'src/user/user.service';
 
 @Module({
     imports: [
@@ -26,6 +27,7 @@ import { AuthResolver } from './auth.resolver';
     controllers: [AuthController],
     providers: [
         AuthService,
+        UserService,
         JwtStrategy,
         AuthResolver,
     ],
