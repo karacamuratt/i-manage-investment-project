@@ -31,12 +31,14 @@ export class RateService {
         this.apiKey = this.configService.get<string>('METALS_API_KEY')!;
     }
 
-    @Cron(CronExpression.EVERY_3_HOURS)
-    async cronUpdateAllRates() {
-        await this.fetchAllRatesOnce();
-    }
+    /* Moved to Bull queue to trigger and fetch
+        @Cron(CronExpression.EVERY_3_HOURS)
+        async cronUpdateAllRates() {
+            await this.fetchAllRatesOnce();
+        }
+    */
 
-    private async fetchAllRatesOnce(): Promise<void> {
+    public async fetchAllRatesOnce(): Promise<void> {
         this.logger.log('Fetching all rates (ONE request)...');
 
         const symbols = ['TRY', 'EUR', 'XAU']; 

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 
@@ -11,7 +11,7 @@ export class RateScheduler {
         @InjectQueue('rate-queue') private rateQueue: Queue,
     ) {}
 
-    @Cron('0 * * * *')
+    @Cron(CronExpression.EVERY_3_HOURS)
     async handleCron() {
         this.logger.log('CRON JOB triggered: Adding update-rates job to queue.');
         

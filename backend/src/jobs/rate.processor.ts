@@ -14,7 +14,7 @@ export class RateProcessor {
         this.logger.log(`Processing job ${job.id} to update all rates.`);
         
         try {
-            //await this.rateService.fetchAndStoreRates(); 
+            await this.rateService.fetchAllRatesOnce(); 
             
             this.logger.log(`Job ${job.id} completed successfully.`);
         } catch (error) {
