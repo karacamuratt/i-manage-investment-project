@@ -29,106 +29,105 @@ export class RateService {
         @InjectModel(Rate.name) private rateModel: Model<RateDocument>,
     ) {
         this.apiKey = this.configService.get<string>('METALS_API_KEY')!;
-        if (!this.apiKey) {
-            throw new InternalServerErrorException('METALS_API_KEY is missing.');
-        }
     }
 
-    @Cron(CronExpression.EVERY_DAY_AT_11AM)
-    async handleCronUpdateRates() {
-        this.logger.log('Updating exchange rates via Metals API...');
+    @Cron(CronExpression.EVERY_3_HOURS)
+    async cronUpdateAllRates() {
+        await this.fetchAllRatesOnce();
+    }
 
+    private async fetchAllRatesOnce(): Promise<void> {
+        this.logger.log('Fetching all rates (ONE request)...');
+
+        const symbols = ['TRY', 'EUR', 'XAU']; 
+        const url = `${this.baseUrl}?access_key=${this.apiKey}&base=USD&symbols=${symbols.join(',')}`;
+
+        const response = await lastValueFrom(this.httpService.get(url));
+        const data = response.data;
+
+        if (!data.success) {
+            this.logger.error(`MetalsAPI failed: ${data.error?.info}`);
+            return;
+        }
+
+        const rates = data.rates;
+
+        // calculate each pair
         for (const pair of this.currencyPairsToFetch) {
-            await this.fetchAndSaveRate(pair);
+            const [base, target] = pair.split('/');
+
+            const value = this.calculateRate(base, target, rates);
+
+            if (!value) {
+                this.logger.error(`Cannot calculate ${pair}`);
+                continue;
+            }
+
+            await this.saveToDbAndRedis(pair, value);
         }
 
-        this.logger.log('Exchange rates update completed.');
+        this.logger.log('All rates updated (ONE call).');
     }
 
-    private async fetchAndSaveRate(symbolPair: string): Promise<void> {
-        const [base, target] = symbolPair.split('/');
-
-        this.logger.log(`Fetching ${symbolPair} from Metals API...`);
-
-        const url = `${this.baseUrl}?access_key=${this.apiKey}&base=${base}&symbols=${target}`;
-
-        try {
-            const response = await lastValueFrom(this.httpService.get(url));
-            const data = response.data;
-
-            if (!data.success) {
-                this.logger.error(`MetalsAPI error for ${symbolPair}: ${data.error?.info}`);
-                return;
-            }
-
-            const rateValue = data.rates[target];
-
-            let finalRate = rateValue;
-
-            if (!finalRate) {
-                const reverseUrl = `${this.baseUrl}?access_key=${this.apiKey}&base=${target}&symbols=${base}`;
-                const reverseRes = await lastValueFrom(this.httpService.get(reverseUrl));
-
-                if (!reverseRes.data.success) {
-                    this.logger.error(`Reverse fetch failed for ${symbolPair}`);
-                    return;
-                }
-
-                const reverseRate = reverseRes.data.rates[base];
-
-                if (reverseRate) {
-                    finalRate = 1 / reverseRate;
-                }
-            }
-
-            if (!finalRate || isNaN(finalRate)) {
-                this.logger.error(`Invalid rate for ${symbolPair}`);
-                return;
-            }
-
-            await this.rateModel.findOneAndUpdate(
-                { symbolPair },
-                { value: finalRate, updatedAt: new Date() },
-                { upsert: true, new: true }
-            );
-
-            this.logger.log(`Saved ${symbolPair}: ${finalRate}`);
-
-        } catch (err) {
-            this.logger.error(`Metals API request failed for ${symbolPair}: ${err.message}`);
+    private calculateRate(base: string, target: string, rates: any): number {
+        if (base === 'USD') {
+            return rates[target];
         }
+
+        if (target === 'USD') {
+            return 1 / rates[base];
+        }
+
+        return (rates[target] / rates[base]);
+    }
+
+    private async saveToDbAndRedis(pair: string, value: number) {
+        await this.rateModel.findOneAndUpdate(
+            { symbolPair: pair },
+            { value, updatedAt: new Date() },
+            { upsert: true, new: true }
+        );
+
+        await this.redisService.set(`rate:${pair}`, value.toString(), 300);
+
+        this.logger.log(`Saved ${pair}: ${value}`);
     }
 
     async getRate(symbolPair: string): Promise<number> {
         const redisKey = `rate:${symbolPair}`;
-        const redisRate = await this.redisService.get(redisKey);
+        const redisVal = await this.redisService.get(redisKey);
 
-        if (redisRate) {
-            this.logger.verbose(`Redis cache hit: ${symbolPair} = ${redisRate}`);
-            return parseFloat(redisRate);
+        if (redisVal) {
+            this.logger.verbose(
+                `[CACHE-REDIS] Returned from Redis cache → ${symbolPair} = ${redisVal}`
+            );
+            return parseFloat(redisVal);
         }
 
         const dbRate = await this.rateModel.findOne({ symbolPair }).exec();
 
         if (dbRate) {
-            this.logger.verbose(`MongoDB cache hit: ${symbolPair} = ${dbRate.value}`);
+            this.logger.verbose(
+                `[CACHE-MONGO] Returned from MongoDB cache → ${symbolPair} = ${dbRate.value}`
+            );
 
             await this.redisService.set(redisKey, dbRate.value.toString(), 300);
-
             return dbRate.value;
         }
 
-        this.logger.warn(`Cache miss and DB data miss → Fetching from MetalsAPI: ${symbolPair}`);
-        await this.fetchAndSaveRate(symbolPair);
+        await this.fetchAllRatesOnce(); // update everything
 
         const newRate = await this.rateModel.findOne({ symbolPair }).exec();
 
         if (newRate) {
+            this.logger.verbose(
+                `[FETCH-METALS-API] Returned after Metals API fetch → ${symbolPair} = ${newRate.value}`
+            );
             await this.redisService.set(redisKey, newRate.value.toString(), 300);
             return newRate.value;
         }
 
-        this.logger.error(`Failed to fetch rate for ${symbolPair}`);
+        this.logger.error(`[FAILED] Could not obtain rate for ${symbolPair}`);
         return 0;
     }
 }
