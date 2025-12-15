@@ -3,6 +3,9 @@ import { BullModule } from '@nestjs/bull';
 import { RateProcessor } from './rate.processor';
 import { RateModule } from '../rate/rate.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { PriceAlertScheduler } from 'src/scheduler/price-alert.scheduler';
+import { PriceAlertProcessor } from './price-alert.processor';
+import { PortfolioModule } from 'src/portfolio/portfolio.module';
 
 @Module({
     imports: [
@@ -16,13 +19,23 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             }),
             inject: [ConfigService],
         }),
-        BullModule.registerQueue({
-        name: 'rate-queue',
-        }),
+        BullModule.registerQueue(
+            {
+                name: 'rate-queue',
+            },
+            {
+                name: 'price-alert-queue',
+            }
+        ),
         RateModule,
+        PortfolioModule
     ],
-    providers: [RateProcessor],
+    providers: [
+        RateProcessor,
+        PriceAlertProcessor,
+        PriceAlertScheduler
+    ],
     exports: [BullModule],
 })
 
-export class JobsModule {}
+export class JobsModule { }

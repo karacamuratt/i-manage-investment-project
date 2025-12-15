@@ -13,6 +13,7 @@ import getSymbolFromCurrency from "currency-symbol-map";
 import ProfileModal from './components/ProfileModal';
 import NotificationModal from './components/NotificationModal';
 import { AlertTriangle, Bell, CheckCircle } from 'lucide-react';
+import { connectSocket } from '@/lib/socket';
 
 interface PortfolioItem {
     id: string;
@@ -81,6 +82,7 @@ export default function DashboardPage() {
     useAuthGuard();
 
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+    const [priceAlert, setPriceAlert] = useState<any | null>(null);
     const sellInputRef = useRef<HTMLInputElement>(null);
     const { t, lang } = useLanguage();
     const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
@@ -120,7 +122,7 @@ export default function DashboardPage() {
         try {
             await createAlert({ variables: { symbol, targetPrice } });
             setIsNotificationModalOpen(false);
-            setFormSuccess(`${symbol} için ${targetPrice.toFixed(2)} ${t('TRY_LABEL')} hedefleri başarıyla kaydedildi!`);
+            setFormSuccess(`${t('PRICE_ALERT_SUCCESS', { symbol: symbol, targetPrice: targetPrice.toFixed(2) })}`);
             setTimeout(() => setFormSuccess(''), 4000);
         } catch (err: any) {
             console.error("Price Alert Creation Error:", err);
@@ -128,7 +130,29 @@ export default function DashboardPage() {
         }
     };
 
+    useEffect(() => {
+        if (!userData?.getUserProfile?.id) {
+            console.log('Waiting for user profile...');
+            return;
+        }
 
+        console.log('CONNECTING SOCKET WITH USER:', userData.getUserProfile.id);
+
+        const socket = connectSocket(userData.getUserProfile.id);
+
+        socket.on('price-alert', (payload: any) => {
+            console.log('PRICE ALERT RECEIVED:', payload);
+            setPriceAlert(payload);
+
+            setTimeout(() => {
+                console.log('priceAlert state SHOULD be visible now');
+            }, 0);
+        });
+
+        return () => {
+            socket.off('price-alert');
+        };
+    }, [userData]);
 
     const handleProfileButtonClick = () => {
         if (userData?.getUserProfile) {
@@ -677,6 +701,51 @@ export default function DashboardPage() {
                     setError={setFormErrorProfile}
                 />
             )}
+
+            {priceAlert && (
+                <div
+                    onClick={() => setPriceAlert(null)}
+                    className="
+                        fixed bottom-6 right-6 z-50
+                        bg-green-600 text-white
+                        p-4 rounded-xl shadow-2xl
+                        animate-slide-in
+                        cursor-pointer
+                        hover:bg-green-700
+                        transition
+                    "
+                >
+                    <div className="flex items-start space-x-3">
+
+                        <Bell className="w-5 h-5 mt-1 flex-shrink-0" />
+
+                        <div className="flex-1">
+                            <p className="font-bold">
+                                {t('PRICE_ALERT_TRIGGERED')}
+                            </p>
+                            <p className="text-sm">
+                                {priceAlert.symbol} → {priceAlert.targetPrice}
+                            </p>
+                            <p className="text-xs opacity-80">
+                                {t('CURRENT_PRICE')}: {priceAlert.currentPrice}
+                            </p>
+                        </div>
+
+                        {/* Cancel Button */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setPriceAlert(null);
+                            }}
+                            className="ml-3 text-white/80 hover:text-whitetext-lg font-bold leading-none"
+                            aria-label="Close"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

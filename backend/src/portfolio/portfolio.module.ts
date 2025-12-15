@@ -7,6 +7,7 @@ import { RateModule } from '../rate/rate.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { GoldModule } from 'src/gold/gold.module';
 import { Alert, AlertSchema } from './schemas/alert.schema';
+import { AlertModule } from 'src/gateway/alert.module';
 
 @Module({
     imports: [
@@ -22,9 +23,13 @@ import { Alert, AlertSchema } from './schemas/alert.schema';
         ]),
         RateModule,
         AuthModule,
-        GoldModule
+        GoldModule,
+        AlertModule
     ],
     providers: [PortfolioService, PortfolioResolver],
+    exports: [
+        PortfolioService,
+    ],
 })
 
 export class PortfolioModule { }

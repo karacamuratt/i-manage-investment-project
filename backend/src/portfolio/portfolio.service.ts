@@ -9,6 +9,7 @@ import { Alert, AlertDocument } from './schemas/alert.schema'
 import { SellPortfolioInput } from './dto/sell-portfolio.dto';
 import { GoldService } from './../gold/gold.service';
 import { CreateAlertInput } from './dto/create-alert.input';
+import { AlertGateway } from 'src/gateway/alert.gateway';
 
 type PortfolioBase = Omit<PortfolioType, 'currentValueTRY'>;
 
@@ -21,7 +22,43 @@ export class PortfolioService {
         @InjectModel(Alert.name) private readonly alertModel: Model<AlertDocument>,
         private readonly rateService: RateService,
         private readonly goldService: GoldService,
+        private readonly alertGateway: AlertGateway
     ) { }
+
+    async checkAllAlerts() {
+        const activeAlerts = await this.alertModel.find({
+            isTriggered: false,
+        });
+
+        for (const alert of activeAlerts) {
+            let currentPrice;
+
+
+            switch (alert.symbol) {
+                case 'USD':
+                case 'EUR':
+                    currentPrice = await this.rateService.getRate(alert.symbol + '/TRY');
+                    break;
+                default:
+                    const goldPrices = await this.goldService.getCalculatedGoldPrices();
+                    currentPrice = goldPrices[alert.symbol];
+            }
+
+            if (currentPrice >= alert.targetPrice) {
+                alert.isTriggered = true;
+                await alert.save();
+
+                this.alertGateway.emitPriceAlert(
+                    alert.userId.toString(),
+                    {
+                        symbol: alert.symbol,
+                        targetPrice: alert.targetPrice,
+                        currentPrice,
+                    }
+                );
+            }
+        }
+    }
 
     async createAlert(
         input: CreateAlertInput,
