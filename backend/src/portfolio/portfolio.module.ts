@@ -6,13 +6,20 @@ import { PortfolioResolver } from './portfolio.resolver';
 import { RateModule } from '../rate/rate.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { GoldModule } from 'src/gold/gold.module';
+import { Alert, AlertSchema } from './schemas/alert.schema';
 
 @Module({
     imports: [
-        MongooseModule.forFeature([{ 
-            name: Portfolio.name, 
-            schema: PortfolioSchema 
-        }]),
+        MongooseModule.forFeature([
+            {
+                name: Portfolio.name,
+                schema: PortfolioSchema
+            },
+            {
+                name: Alert.name,
+                schema: AlertSchema
+            }
+        ]),
         RateModule,
         AuthModule,
         GoldModule
@@ -20,4 +27,4 @@ import { GoldModule } from 'src/gold/gold.module';
     providers: [PortfolioService, PortfolioResolver],
 })
 
-export class PortfolioModule {}
+export class PortfolioModule { }

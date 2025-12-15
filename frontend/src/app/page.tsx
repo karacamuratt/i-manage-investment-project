@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useLazyQuery } from '@apollo/client/react';
-import { GET_USER_PROFILE, UPDATE_USER_PROFILE, GET_PORTFOLIOS, CREATE_PORTFOLIO, SELL_PORTFOLIO, GET_RATE } from '@/graphql/queries';
+import { GET_USER_PROFILE, UPDATE_USER_PROFILE, GET_PORTFOLIOS, CREATE_PORTFOLIO, SELL_PORTFOLIO, GET_RATE, CREATE_ALERT } from '@/graphql/queries';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { LogoutButton } from './components/LogoutButton';
 import { useState, FormEvent, useMemo, useRef, useEffect } from 'react';
@@ -11,6 +11,8 @@ import { LanguageSelector } from './components/LanguageSelector';
 import { useRouter } from 'next/navigation';
 import getSymbolFromCurrency from "currency-symbol-map";
 import ProfileModal from './components/ProfileModal';
+import NotificationModal from './components/NotificationModal';
+import { AlertTriangle, Bell, CheckCircle } from 'lucide-react';
 
 interface PortfolioItem {
     id: string;
@@ -32,22 +34,22 @@ interface UserProfile {
 }
 
 const SUPPORTED_SYMBOLS = [
-    'USD', 
+    'USD',
     'EUR',
-    'GRAM_ALTIN', 
-    'CEYREK_ALTIN', 
-    'TAM_ALTIN', 
+    'GRAM_ALTIN',
+    'CEYREK_ALTIN',
+    'TAM_ALTIN',
     'ATA_ALTIN',
 ];
 
 const getSymbolTotalAmount = (items: PortfolioItem[], symbol: string, lang: string): string => {
-    
+
     const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
-    
+
     const maxDecimals = ['USD', 'EUR'].includes(symbol) ? 2 : 4;
 
     const locale = lang === 'en' ? 'en-US' : 'tr-TR';
-    
+
     const formattedAmount = totalAmount.toLocaleString(locale, {
         maximumFractionDigits: maxDecimals,
         minimumFractionDigits: 2,
@@ -59,7 +61,7 @@ const getSymbolTotalAmount = (items: PortfolioItem[], symbol: string, lang: stri
     if (['USD', 'EUR'].includes(symbol)) {
         return `${formattedAmount} ${currencySymbol}`;
     }
-    
+
     return `${formattedAmount}`;
 };
 
@@ -81,13 +83,13 @@ export default function DashboardPage() {
     const [isSellModalOpen, setIsSellModalOpen] = useState(false);
     const sellInputRef = useRef<HTMLInputElement>(null);
     const { t, lang } = useLanguage();
-
+    const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
     useEffect(() => {
         if (isSellModalOpen) {
             const timer = setTimeout(() => {
                 sellInputRef.current?.focus();
-            }, 0); 
-            
+            }, 0);
+
             return () => clearTimeout(timer);
         }
     }, [isSellModalOpen]);
@@ -96,7 +98,7 @@ export default function DashboardPage() {
         if (isSellModalOpen) {
             document.title = `${t('SELL_CONFIRMATION')}`;
         } else {
-            document.title = t('PORTFOLIO_SUMMARY'); 
+            document.title = t('PORTFOLIO_SUMMARY');
         }
     }, [t, isSellModalOpen]);
 
@@ -104,12 +106,29 @@ export default function DashboardPage() {
     const [profileData, setProfileData] = useState<UserProfile | null>(null);
     const [formErrorProfile, setFormErrorProfile] = useState('');
 
-    const { data: userData, loading: userLoading, error: userError, refetch: refetchProfile } = 
+    const { data: userData, loading: userLoading, error: userError, refetch: refetchProfile } =
         useQuery<{ getUserProfile: UserProfile }>(GET_USER_PROFILE);
-    
+
     const [updateProfile, { loading: updatingProfile }] = useMutation(UPDATE_USER_PROFILE, {
         refetchQueries: [{ query: GET_USER_PROFILE }, 'GetUserProfile'],
     });
+
+    const [formSuccess, setFormSuccess] = useState('');
+    const [createAlert, { loading: creatingAlert }] = useMutation(CREATE_ALERT);
+
+    const handleCreateAlert = async (symbol: any, targetPrice: any) => {
+        try {
+            await createAlert({ variables: { symbol, targetPrice } });
+            setIsNotificationModalOpen(false);
+            setFormSuccess(`${symbol} için ${targetPrice.toFixed(2)} ${t('TRY_LABEL')} hedefleri başarıyla kaydedildi!`);
+            setTimeout(() => setFormSuccess(''), 4000);
+        } catch (err: any) {
+            console.error("Price Alert Creation Error:", err);
+            setFormError(`Price Alert couldn't be created: ${err.message}`);
+        }
+    };
+
+
 
     const handleProfileButtonClick = () => {
         if (userData?.getUserProfile) {
@@ -180,13 +199,13 @@ export default function DashboardPage() {
     const totalValue = portfolios.reduce((sum, item) => sum + item.currentValueTRY, 0);
 
     let conversionRate = 1.0;
-    
+
     if (selectedBaseCurrency === 'TRY') {
         conversionRate = 1.0;
     } else {
-        conversionRate = conversionData?.getRate || 0; 
+        conversionRate = conversionData?.getRate || 0;
     }
-    
+
     const convertedTotalValue = totalValue * conversionRate;
 
     const handleCheckboxChange = (itemId: string) => {
@@ -204,7 +223,7 @@ export default function DashboardPage() {
         const finalValue = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : filteredValue;
 
         setter(finalValue);
-};
+    };
 
     const handleSellButtonClick = (item: PortfolioItem) => {
         setItemToSell(item);
@@ -305,12 +324,12 @@ export default function DashboardPage() {
 
     const locale = lang === 'en' ? 'en-US' : 'tr-TR';
 
-    const timeOptions: Intl.DateTimeFormatOptions = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: '2-digit', 
-        hour: '2-digit', 
-        minute: '2-digit', 
+    const timeOptions: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
         second: '2-digit',
         hour12: false
     };
@@ -323,8 +342,8 @@ export default function DashboardPage() {
             {/* HEADER */}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">{t('PORTFOLIO_SUMMARY')}</h1>
-                
-                <div className="flex items-center space-x-6"> 
+
+                <div className="flex items-center space-x-6">
                     <div className="flex items-center space-x-3">
                         <div className="text-white bg-gray-800 space-x-6 text-sm border border-gray-500 font-semibold p-2 rounded-md">
                             {formattedTime}
@@ -332,21 +351,29 @@ export default function DashboardPage() {
                         <LanguageSelector />
                     </div>
 
+                    <button
+                        onClick={() => setIsNotificationModalOpen(true)}
+                        className="px-4 py-2 rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition flex items-center space-x-2"
+                    >
+                        <Bell className="w-4 h-4" />
+                        <span>{t('SETUP_PRICE_ALERT')}</span>
+                    </button>
+
                     <div className="flex items-center space-x-3">
                         <button
                             onClick={handleProfileButtonClick}
-                            style={{ 
-                                padding: '10px 25px', 
-                                backgroundColor: 'blue', 
-                                color: 'white', 
-                                border: 'none', 
-                                cursor: 'pointer' 
+                            style={{
+                                padding: '10px 25px',
+                                backgroundColor: 'blue',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer'
                             }}
                             disabled={userLoading}
                         >
                             {userLoading ? `${t('LOADING')}...` : t('PROFILE_TITLE')}
                         </button>
-                        
+
                         <LogoutButton />
                     </div>
                 </div>
@@ -367,27 +394,36 @@ export default function DashboardPage() {
                     </select>
                 </div>
                 <p className="text-5xl font-extrabold mt-1">
-                {rateLoading
-                    ? t('CALCULATING')
-                    : (() => {
-                        const formatted = convertedTotalValue.toLocaleString(
-                            lang === 'en' ? 'en-US' : 'tr-TR',
-                            {
-                                maximumFractionDigits: 2,
-                                style: 'currency',
-                                currency: selectedBaseCurrency,
+                    {rateLoading
+                        ? t('CALCULATING')
+                        : (() => {
+                            const formatted = convertedTotalValue.toLocaleString(
+                                lang === 'en' ? 'en-US' : 'tr-TR',
+                                {
+                                    maximumFractionDigits: 2,
+                                    style: 'currency',
+                                    currency: selectedBaseCurrency,
+                                }
+                            );
+
+                            if (selectedBaseCurrency === 'TRY') {
+                                return formatted.replace('TRY', '₺');
                             }
-                        );
 
-                        if (selectedBaseCurrency === 'TRY') {
-                            return formatted.replace('TRY', '₺');
-                        }
-
-                        return formatted;
-                    })()
-                }
+                            return formatted;
+                        })()
+                    }
                 </p>
             </div>
+
+            {(formError || formSuccess) && (
+                <div className={`p-3 rounded-lg mb-4 ${formError ? 'bg-red-100 text-red-600 border border-red-300' : 'bg-green-100 text-green-600 border border-green-300'}`}>
+                    <div className="flex items-center">
+                        {formError ? <AlertTriangle className="w-5 h-5 mr-2" /> : <CheckCircle className="w-5 h-5 mr-2" />}
+                        <p className="font-medium">{formError || formSuccess}</p>
+                    </div>
+                </div>
+            )}
 
             {/* ADD NEW ASSET */}
             <div className="bg-white shadow-xl rounded-xl p-6 mb-10 border border-gray-100">
@@ -409,7 +445,7 @@ export default function DashboardPage() {
                             >
                                 {SUPPORTED_SYMBOLS.map(s => (
                                     <option key={s} value={s}>
-                                        {t(getSymbolLabelKey(s))} 
+                                        {t(getSymbolLabelKey(s))}
                                     </option>
                                 ))}
                             </select>
@@ -428,11 +464,10 @@ export default function DashboardPage() {
                                         e.target.value
                                     )
                                 }
-                                className={`mt-1 block w-full rounded-md p-3 shadow-sm border ${
-                                    formError && newAmount === ''
-                                        ? 'border-red-500'
-                                        : 'border-gray-300'
-                                } text-black`}
+                                className={`mt-1 block w-full rounded-md p-3 shadow-sm border ${formError && newAmount === ''
+                                    ? 'border-red-500'
+                                    : 'border-gray-300'
+                                    } text-black`}
                                 placeholder="100.00"
                                 step="any"
                                 disabled={creating}
@@ -454,14 +489,13 @@ export default function DashboardPage() {
                                         {t('MANUAL_RATE_LABEL')}
                                     </label>
                                 </div>
-                                
+
                                 <input
                                     type="text"
                                     value={manualRate}
                                     onChange={(e) => handleNumericInputChange(e.target.value, setManualRate)}
-                                    className={`mt-1 block w-full rounded-md p-3 shadow-sm border ${
-                                        isManualRateEnabled ? 'border-gray-300' : 'border-gray-200 bg-gray-50'
-                                    } text-black`}
+                                    className={`mt-1 block w-full rounded-md p-3 shadow-sm border ${isManualRateEnabled ? 'border-gray-300' : 'border-gray-200 bg-gray-50'
+                                        } text-black`}
                                     placeholder={t('MANUAL_RATE_PLACEHOLDER')}
                                     disabled={!isManualRateEnabled || creating}
                                     inputMode="decimal"
@@ -480,11 +514,10 @@ export default function DashboardPage() {
 
                     <button
                         type="submit"
-                        className={`w-full py-3 px-4 rounded-md text-sm font-medium text-white ${
-                            creating
-                                ? 'bg-indigo-300 cursor-not-allowed'
-                                : 'bg-indigo-600 hover:bg-indigo-700'
-                        }`}
+                        className={`w-full py-3 px-4 rounded-md text-sm font-medium text-white ${creating
+                            ? 'bg-indigo-300 cursor-not-allowed'
+                            : 'bg-indigo-600 hover:bg-indigo-700'
+                            }`}
                         disabled={creating}
                     >
                         {creating ? t('ADDING') : t('ADD_ASSET')}
@@ -529,11 +562,10 @@ export default function DashboardPage() {
                                     return (
                                         <div
                                             key={item.id}
-                                            className={`flex justify-between items-center p-3 rounded-lg transition border ${
-                                                isSelected
-                                                    ? 'bg-indigo-50 border-indigo-300 shadow-md'
-                                                    : 'bg-white hover:bg-gray-50 border-gray-100'
-                                            } ${isCheckboxDisabled ? 'opacity-60' : ''}`}
+                                            className={`flex justify-between items-center p-3 rounded-lg transition border ${isSelected
+                                                ? 'bg-indigo-50 border-indigo-300 shadow-md'
+                                                : 'bg-white hover:bg-gray-50 border-gray-100'
+                                                } ${isCheckboxDisabled ? 'opacity-60' : ''}`}
                                         >
                                             <div className="flex items-center space-x-3">
                                                 <input
@@ -622,7 +654,15 @@ export default function DashboardPage() {
                 sellInputRef={sellInputRef}
             />
 
-             {isProfileModalOpen && profileData && (
+            <NotificationModal
+                isOpen={isNotificationModalOpen}
+                onClose={() => setIsNotificationModalOpen(false)}
+                onCreateAlert={handleCreateAlert}
+                creating={creatingAlert}
+                t={t}
+            />
+
+            {isProfileModalOpen && profileData && (
                 <ProfileModal
                     isOpen={isProfileModalOpen}
                     profile={profileData}
