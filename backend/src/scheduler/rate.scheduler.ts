@@ -11,7 +11,7 @@ export class RateScheduler {
         @InjectQueue('rate-queue') private rateQueue: Queue,
     ) { }
 
-    @Cron(CronExpression.EVERY_4_HOURS)
+    @Cron(CronExpression.EVERY_DAY_AT_NOON)
     async handleCron() {
         this.logger.log('CRON JOB triggered: Adding update-rates job to queue.');
 

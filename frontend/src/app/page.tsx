@@ -705,15 +705,7 @@ export default function DashboardPage() {
             {priceAlert && (
                 <div
                     onClick={() => setPriceAlert(null)}
-                    className="
-                        fixed bottom-6 right-6 z-50
-                        bg-green-600 text-white
-                        p-4 rounded-xl shadow-2xl
-                        animate-slide-in
-                        cursor-pointer
-                        hover:bg-green-700
-                        transition
-                    "
+                    className={`fixed bottom-6 right-6 z-50 ${priceAlert.dipsBelow ? "bg-red-600" : "bg-green-600"} text-white p-4 rounded-xl shadow-2xl animate-slide-in cursor-pointer ${priceAlert.dipsBelow ? "hover:bg-red-700" : "hover:bg-green-700"} transition`}
                 >
                     <div className="flex items-start space-x-3">
 

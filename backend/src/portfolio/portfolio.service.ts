@@ -44,7 +44,7 @@ export class PortfolioService {
                     currentPrice = goldPrices[alert.symbol];
             }
 
-            if (currentPrice >= alert.targetPrice) {
+            if (currentPrice >= alert.targetPrice || currentPrice <= alert.targetPrice) {
                 alert.isTriggered = true;
                 await alert.save();
 
@@ -53,7 +53,8 @@ export class PortfolioService {
                     {
                         symbol: alert.symbol,
                         targetPrice: alert.targetPrice,
-                        currentPrice,
+                        currentPrice: currentPrice.toFixed(5),
+                        dipsBelow: currentPrice < alert.currentRate ? true : false
                     }
                 );
             }
@@ -75,11 +76,24 @@ export class PortfolioService {
             throw new ConflictException('Alert already exists for this symbol and price');
         }
 
+        let currentRate;
+
+        switch (input.symbol) {
+            case 'USD':
+            case 'EUR':
+                currentRate = await this.rateService.getRate(input.symbol + '/TRY');
+                break;
+            default:
+                const goldPrices = await this.goldService.getCalculatedGoldPrices();
+                currentRate = goldPrices[input.symbol];
+        }
+
         const alert = new this.alertModel({
             symbol: input.symbol,
             targetPrice: input.targetPrice,
             userId: user._id,
             isTriggered: false,
+            currentRate: currentRate
         });
 
         return alert.save();
