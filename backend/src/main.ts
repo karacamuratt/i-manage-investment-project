@@ -13,23 +13,21 @@ async function bootstrap() {
 
     app.enableCors({
         origin: [
-            'http://localhost:3001',
-            'http://127.0.0.1:3001',
+            'http://localhost:3000'
         ],
-        methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
         credentials: true,
     });
 
     // BULL BOARD
     const serverAdapter = new ExpressAdapter();
-    serverAdapter.setBasePath('/bull-board'); 
+    serverAdapter.setBasePath('/bull-board');
 
-    const queueNames = ['rate-queue']; 
+    const queueNames = ['rate-queue'];
 
     const queues = queueNames.map((name) => {
-        const queue = app.get<Queue>(getQueueToken(name)); 
-        
-        return new BullAdapter(queue); 
+        const queue = app.get<Queue>(getQueueToken(name));
+
+        return new BullAdapter(queue);
     });
 
     createBullBoard({
@@ -37,9 +35,9 @@ async function bootstrap() {
         serverAdapter,
     });
 
-    app.use('/bull-board', serverAdapter.getRouter()); 
-    
-    await app.listen(3000);
+    app.use('/bull-board', serverAdapter.getRouter());
+
+    await app.listen(3001);
 }
 
 bootstrap();

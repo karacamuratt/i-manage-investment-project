@@ -1,8 +1,7 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { lastValueFrom } from 'rxjs';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Rate, RateDocument } from './schemas/rate.schema';
@@ -31,17 +30,10 @@ export class RateService {
         this.apiKey = this.configService.get<string>('METALS_API_KEY')!;
     }
 
-    /* Moved to Bull queue to trigger and fetch
-        @Cron(CronExpression.EVERY_3_HOURS)
-        async cronUpdateAllRates() {
-            await this.fetchAllRatesOnce();
-        }
-    */
-
     public async fetchAllRatesOnce(): Promise<void> {
         this.logger.log('Fetching all rates (ONE request)...');
 
-        const symbols = ['TRY', 'EUR', 'XAU']; 
+        const symbols = ['TRY', 'EUR', 'XAU'];
         const url = `${this.baseUrl}?access_key=${this.apiKey}&base=USD&symbols=${symbols.join(',')}`;
 
         const response = await lastValueFrom(this.httpService.get(url));

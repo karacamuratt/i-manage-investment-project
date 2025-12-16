@@ -6,6 +6,19 @@ type AccessTokenType {
   accessToken: String!
 }
 
+type AlertType {
+  createdAt: DateTime!
+  id: ID!
+  isTriggered: Boolean!
+  symbol: String!
+  targetPrice: Float!
+}
+
+input CreateAlertInput {
+  symbol: String!
+  targetPrice: Float!
+}
+
 input CreatePortfolioInput {
   amount: Float!
   isManualRate: Boolean! = false
@@ -24,6 +37,7 @@ type LoginRequestType {
 }
 
 type Mutation {
+  createAlert(input: CreateAlertInput!): AlertType!
   createPortfolio(input: CreatePortfolioInput!): PortfolioType!
   loginRequest(email: String!): LoginRequestType!
   sellPortfolio(input: SellPortfolioInput!): PortfolioType!

@@ -9,21 +9,23 @@ export class RateScheduler {
 
     constructor(
         @InjectQueue('rate-queue') private rateQueue: Queue,
-    ) {}
+    ) { }
 
-    @Cron(CronExpression.EVERY_3_HOURS)
+    @Cron(CronExpression.EVERY_4_HOURS)
     async handleCron() {
         this.logger.log('CRON JOB triggered: Adding update-rates job to queue.');
-        
+
         await this.rateQueue.add('update-rates', {
             timestamp: new Date().toISOString(),
         }, {
             jobId: `rate-update-${Date.now()}`,
         });
     }
-    
+
+    /*
     async onApplicationBootstrap() {
         this.logger.log('Application started: Forcing initial rate update job.');
         await this.rateQueue.add('update-rates', { initial: true });
     }
+    */
 }

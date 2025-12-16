@@ -77,3 +77,13 @@ export const UPDATE_USER_PROFILE = gql`
         }
     }
 `;
+
+export const CREATE_ALERT = gql`
+    mutation CreateAlert($symbol: String!, $targetPrice: Float!) {
+        createAlert(input: { symbol: $symbol, targetPrice: $targetPrice }) {
+            id
+            symbol
+            targetPrice
+        }
+    }
+`;
