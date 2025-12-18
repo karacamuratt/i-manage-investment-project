@@ -87,3 +87,20 @@ export const CREATE_ALERT = gql`
         }
     }
 `;
+
+export const GET_ACTIVE_ALERTS = gql`
+    query GetActiveAlerts {
+        getActiveAlerts {
+            id
+            symbol,
+            targetPrice,
+            isTriggered
+        }
+    }
+`;
+
+export const DELETE_ALERTS = gql`
+    mutation DeleteAlerts($ids: [ID!]!) {
+        deleteAlerts(ids: $ids)
+    }
+`;

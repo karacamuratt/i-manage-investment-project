@@ -1,4 +1,4 @@
-import { Resolver, Mutation, Args, Query } from '@nestjs/graphql';
+import { Resolver, Mutation, Args, Query, ID } from '@nestjs/graphql';
 import { UnauthorizedException, UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from '../auth/jwt-auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/jwt-auth/jwt-auth.guard';
@@ -55,5 +55,32 @@ export class PortfolioResolver {
         const userId = user._id.toString();
 
         return this.portfolioService.sellPortfolio(userId, input);
+    }
+
+    @Query(() => [Alert])
+    async getActiveAlerts(
+        @CurrentUser() user: User
+    ): Promise<Alert[]> {
+        if (!user || !user._id) {
+            throw new UnauthorizedException("User info is not found");
+        }
+
+        const userId = user._id.toString();
+        return this.portfolioService.getUserAlerts(userId);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteAlerts(
+        @Args('ids', { type: () => [ID] }) ids: string[],
+        @CurrentUser() user: User,
+    ): Promise<boolean> {
+        if (!user?._id) {
+            throw new UnauthorizedException("User info is not found");
+        }
+
+        return this.portfolioService.deleteAlerts(
+            user._id.toString(),
+            ids,
+        );
     }
 }

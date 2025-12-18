@@ -115,6 +115,10 @@ export const translations = {
         PRICE_ALERT_TRIGGERED: "FIYAT ALARMI",
         CURRENT_PRICE: "Güncel Fiyat",
         PRICE_ALERT_SUCCESS: "{symbol} için {targetPrice} TRY hedefi başarıyla kaydedildi!",
+        REMOVE: "Kaldır",
+        REMOVE_SELECTED: "Seçimi kaldır",
+        NO_ACTIVE_ALERTS: "Aktif Fiyat alarmın henüz yok.",
+        ACTIVE_PRICE_ALERTS: "Aktif Fiyat Alarmlarım",
         ...assets.tr,
         ...profile.tr
     },
@@ -182,6 +186,10 @@ export const translations = {
         PRICE_ALERT_TRIGGERED: "PRICE ALERT",
         CURRENT_PRICE: "Current Price",
         PRICE_ALERT_SUCCESS: "{symbol} alert is saved for {targetPrice} TRY target price!",
+        REMOVE: "Remove",
+        REMOVE_SELECTED: "Remove selected",
+        NO_ACTIVE_ALERTS: "No active price alerts.",
+        ACTIVE_PRICE_ALERTS: "Active Price Alerts",
         ...assets.en,
         ...profile.en
     },
