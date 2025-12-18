@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Portfolio, PortfolioDocument } from './schemas/portfolio.schema';
 import { CreatePortfolioInput, PortfolioType } from './dto/portfolio.dto';
 import { RateService } from '../rate/rate.service';
@@ -83,6 +83,33 @@ export class PortfolioService {
         });
 
         return alert.save();
+    }
+
+    async getUserAlerts(userId: string): Promise<Alert[]> {
+        this.logger.log("getUserAlerts -> userId: " + userId);
+        return this.alertModel
+            .find({
+                userId: new Types.ObjectId(userId),
+                isTriggered: false,
+            })
+            .sort({ createdAt: -1 })
+            .exec();
+    }
+
+    async deleteAlerts(userId: string, ids: string[]): Promise<boolean> {
+        if (!ids.length) return true;
+
+        const objectIds = ids.map(id => new Types.ObjectId(id));
+
+        const result = await this.alertModel.deleteMany({
+            _id: { $in: objectIds },
+            userId: new Types.ObjectId(userId),
+            isTriggered: false,
+        });
+
+        this.logger.log(`Deleted ${result.deletedCount} alerts`);
+
+        return true;
     }
 
     async create(input: CreatePortfolioInput, user: User): Promise<PortfolioType> {

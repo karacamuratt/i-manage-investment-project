@@ -116,7 +116,9 @@ export default function DashboardPage() {
     });
 
     const [formSuccess, setFormSuccess] = useState('');
-    const [createAlert, { loading: creatingAlert }] = useMutation(CREATE_ALERT);
+    const [createAlert, { loading: creatingAlert }] = useMutation(CREATE_ALERT, {
+        refetchQueries: ['GetActiveAlerts']
+    });
 
     const handleCreateAlert = async (symbol: any, targetPrice: any) => {
         try {
