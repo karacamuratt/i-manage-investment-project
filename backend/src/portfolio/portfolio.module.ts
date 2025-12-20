@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Portfolio, PortfolioSchema } from './schemas/portfolio.schema';
 import { PortfolioService } from './portfolio.service';
@@ -24,7 +24,7 @@ import { AlertModule } from 'src/gateway/alert.module';
         RateModule,
         AuthModule,
         GoldModule,
-        AlertModule
+        forwardRef(() => AlertModule),
     ],
     providers: [PortfolioService, PortfolioResolver],
     exports: [

@@ -58,6 +58,17 @@ export class RateService {
             }
 
             await this.saveToDbAndRedis(pair, value);
+
+            const newRate = await this.rateModel.findOne({ pair }).exec();
+
+            if (newRate) {
+                this.logger.verbose(
+                    `[fetchAllRatesOnce()] Returned after Metals API fetch → ${pair} = ${newRate.value}`
+                );
+
+                const redisKey = `rate:${pair}`;
+                await this.redisService.set(redisKey, newRate.value.toString(), 300);
+            }
         }
 
         this.logger.log('All rates updated (ONE call).');
@@ -109,6 +120,7 @@ export class RateService {
             return dbRate.value;
         }
 
+        /*
         await this.fetchAllRatesOnce(); // update everything
 
         const newRate = await this.rateModel.findOne({ symbolPair }).exec();
@@ -120,6 +132,7 @@ export class RateService {
             await this.redisService.set(redisKey, newRate.value.toString(), 300);
             return newRate.value;
         }
+        */
 
         this.logger.error(`[FAILED] Could not obtain rate for ${symbolPair}`);
         return 0;

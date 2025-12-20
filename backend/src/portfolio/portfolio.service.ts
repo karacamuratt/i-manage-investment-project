@@ -44,7 +44,7 @@ export class PortfolioService {
                     currentPrice = goldPrices[alert.symbol];
             }
 
-            if (currentPrice >= alert.targetPrice || currentPrice <= alert.targetPrice) {
+            if (currentPrice != alert.currentRate && (currentPrice >= alert.targetPrice || currentPrice <= alert.targetPrice)) {
                 alert.isTriggered = true;
                 await alert.save();
 
@@ -57,6 +57,8 @@ export class PortfolioService {
                         dipsBelow: currentPrice < alert.currentRate ? true : false
                     }
                 );
+            } else {
+                this.logger.log(`Current rate is the same, alert is not being sent...`);
             }
         }
     }
