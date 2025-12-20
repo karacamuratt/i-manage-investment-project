@@ -11,7 +11,7 @@ export class PriceAlertScheduler {
         @InjectQueue('price-alert-queue') private priceAlertQueue: Queue,
     ) { }
 
-    @Cron(CronExpression.EVERY_30_MINUTES)
+    @Cron(CronExpression.EVERY_5_MINUTES)
     async handleCron() {
         this.logger.log('CRON JOB triggered: Checking price-alert-trigger job to queue.');
 

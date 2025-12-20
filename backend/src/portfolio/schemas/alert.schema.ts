@@ -31,6 +31,9 @@ export class Alert {
     @Field()
     isTriggered: boolean;
 
+    @Prop({ required: true })
+    currentRate: number
+
     @Prop({ type: Types.ObjectId, ref: 'User', required: true })
     userId: Types.ObjectId;
 }

@@ -22,7 +22,7 @@ async function bootstrap() {
     const serverAdapter = new ExpressAdapter();
     serverAdapter.setBasePath('/bull-board');
 
-    const queueNames = ['rate-queue'];
+    const queueNames = ['rate-queue', 'price-alert-queue'];
 
     const queues = queueNames.map((name) => {
         const queue = app.get<Queue>(getQueueToken(name));
