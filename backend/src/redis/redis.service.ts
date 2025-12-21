@@ -3,10 +3,13 @@ import { Redis } from 'ioredis';
 
 @Injectable()
 export class RedisService {
+    protected readonly redisClient: Redis;
     private readonly otpPrefix = 'otp:';
     private readonly ratePrefix = 'rate:';
 
-    constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis) {}
+    constructor(@Inject('REDIS_CLIENT') redisClient: Redis) {
+        this.redisClient = redisClient;
+    }
 
     async setOtp(email: string, code: string, ttlSeconds: number = 300): Promise<string> {
         const key = this.otpPrefix + email;
@@ -27,8 +30,8 @@ export class RedisService {
     async getRate(pair: string): Promise<number | null> {
         const key = this.ratePrefix + pair;
         const rateString = await this.redisClient.get(key);
-        
-        return rateString ? parseFloat(rateString) : null; 
+
+        return rateString ? parseFloat(rateString) : null;
     }
 
     async set(key: string, value: string, ttl?: number): Promise<void> {
@@ -45,7 +48,7 @@ export class RedisService {
 
     async getAndDel(key: string): Promise<string | null> {
         const value = await this.redisClient.get(key);
-        
+
         if (value) {
             await this.redisClient.del(key);
         }

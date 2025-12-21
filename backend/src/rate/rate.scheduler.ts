@@ -11,15 +11,19 @@ export class RateScheduler {
         @InjectQueue('rate-queue') private rateQueue: Queue,
     ) { }
 
-    @Cron(CronExpression.EVERY_DAY_AT_NOON)
+    @Cron(CronExpression.EVERY_2_HOURS)
     async handleCron() {
         this.logger.log('CRON JOB triggered: Adding update-rates job to queue.');
 
-        await this.rateQueue.add('update-rates', {
-            timestamp: new Date().toISOString(),
-        }, {
-            jobId: `rate-update-${Date.now()}`,
-        });
+        await this.rateQueue.add(
+            'update-rates',
+            { source: 'cron' },
+            {
+                jobId: 'rate-update',
+                removeOnComplete: true,
+                removeOnFail: true,
+            },
+        );
     }
 
     /*

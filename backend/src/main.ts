@@ -6,6 +6,9 @@ import { getQueueToken } from '@nestjs/bull';
 import { createBullBoard } from '@bull-board/api';
 import { BullAdapter } from '@bull-board/api/bullAdapter';
 import { ExpressAdapter } from '@bull-board/express';
+import { RedisService } from './redis/redis.service';
+import { createRateLimitMiddleware } from './middleware/rate-limit.middleware';
+import { ConfigService } from '@nestjs/config';
 
 
 async function bootstrap() {
@@ -36,6 +39,24 @@ async function bootstrap() {
     });
 
     app.use('/bull-board', serverAdapter.getRouter());
+
+    const redisService = app.get(RedisService);
+    const configService = app.get(ConfigService);
+    app.use(createRateLimitMiddleware(redisService, configService));
+
+    /** ONLY NECESSARY APIs for Rate limit checks in the future as improvement point.
+        app.use((req, res, next) => {
+            if (
+                req.path.startsWith('/bull-board') ||
+                req.path.startsWith('/health') ||
+                req.path.startsWith('/metrics')
+            ) {
+                return next();
+            }
+
+            return createRateLimitMiddleware(redisService)(req, res, next);
+        });
+     */
 
     await app.listen(3001);
 }
